@@ -139,31 +139,19 @@ async function callGeminiStream(
   userMessage: string
 ) {
   // 构建 Gemini API 请求格式
-  // 将系统提示合并到第一条用户消息中
-  const firstUserMessage = history.length === 0
-    ? `${systemPrompt}\n\n${userMessage}`
-    : userMessage;
-
-  const contents = history.length === 0
-    ? [
-        {
-          role: "user",
-          parts: [{ text: firstUserMessage }],
-        },
-      ]
-    : [
-        ...history.map((msg) => ({
-          role: msg.role === "user" ? "user" : "model",
-          parts: [{ text: msg.content }],
-        })),
-        {
-          role: "user",
-          parts: [{ text: userMessage }],
-        },
-      ];
+  const contents = [
+    ...history.map((msg) => ({
+      role: msg.role === "user" ? "user" : "model",
+      parts: [{ text: msg.content }],
+    })),
+    {
+      role: "user",
+      parts: [{ text: userMessage }],
+    },
+  ];
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${geminiApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${geminiApiKey}`,
     {
       method: "POST",
       headers: {
@@ -272,49 +260,38 @@ Deno.serve(async (req) => {
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     let buffer = "";
+    let processedLength = 0; // 记录已处理的位置
 
     const transformStream = new TransformStream({
       async transform(chunk, controller) {
         buffer += decoder.decode(chunk, { stream: true });
-        const lines = buffer.split("\n");
 
-        // 保留最后一行（可能不完整）
-        buffer = lines.pop() || "";
+        // Gemini streamGenerateContent 返回 JSON 数组流
+        // 格式: [{"candidates":[...]}, {"candidates":[...]}]
+        // 使用正则提取 "text":"..." 内容
+        const textRegex = /"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
+        // 从上次处理的位置开始搜索
+        textRegex.lastIndex = processedLength;
+        let match;
 
-          try {
-            // Gemini 流式响应是 JSON 对象，不是 SSE 格式
-            const data = JSON.parse(line);
-            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        while ((match = textRegex.exec(buffer)) !== null) {
+          // 解码转义字符
+          const content = match[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\r/g, "\r")
+            .replace(/\\t/g, "\t")
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, "\\");
 
-            if (content) {
-              fullResponse += content;
-              // 转发给前端（使用 SSE 格式）
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-            }
-          } catch (e) {
-            // 忽略解析错误，可能是不完整的 JSON
-            console.error("解析流式响应错误:", e, "行内容:", line);
+          if (content) {
+            fullResponse += content;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
           }
+          processedLength = textRegex.lastIndex;
         }
       },
       async flush(controller) {
-        // 处理缓冲区中剩余的数据
-        if (buffer.trim()) {
-          try {
-            const data = JSON.parse(buffer);
-            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (content) {
-              fullResponse += content;
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-            }
-          } catch (e) {
-            console.error("解析最后一行错误:", e);
-          }
-        }
-
         // 流结束后，保存完整的 AI 回复
         if (fullResponse) {
           await addMessage(currentSessionId!, "model", fullResponse);

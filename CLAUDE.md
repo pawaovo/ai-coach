@@ -61,7 +61,7 @@ D:\ai\famlée\
 │   │   └── MascotMenu.tsx        # 人格切换菜单
 │   ├── pages/
 │   │   ├── Home.tsx           # 首页：心情选择、日记入口
-│   │   ├── Chat.tsx           # AI 聊天页面
+│   │   ├── Chat.tsx           # AI 聊天页面（流式对话、会话管理）
 │   │   ├── Calendar.tsx       # Mood 日历：日记历史可视化
 │   │   ├── Campus.tsx         # 校园心理活动布告栏
 │   │   ├── Waterfall.tsx      # 心语瀑布：匿名吐槽墙
@@ -78,7 +78,7 @@ D:\ai\famlée\
 │   │   └── 001_initial_schema.sql  # 数据库初始化脚本
 │   └── functions/
 │       └── gemini-chat/
-│           └── index.ts       # Edge Function：AI 聊天服务
+│           └── index.ts       # Edge Function：AI 聊天服务（流式）
 ├── docs/                      # 项目文档
 ├── .env.local                 # 环境变量（不提交）
 ├── .env.example               # 环境变量模板
@@ -88,7 +88,7 @@ D:\ai\famlée\
 ### State Management & Routing
 - **手动状态路由**: 无 React Router，通过 `App.tsx` 中的 `currentPage` 状态切换页面
 - **自顶向下数据流**: 全局状态（`globalMood`, `currentPersona`）在 `App.tsx` 管理，通过 props 传递
-- **用户标识**: 使用 localStorage 存储匿名用户 ID（`famlee_user_id`）
+- **用户标识**: 开发阶段使用固定用户ID `demo_user`，便于测试
 
 ### Database Schema (Supabase)
 ```sql
@@ -107,16 +107,16 @@ chat_messages (id, session_id, role, content, mood_detected, created_at)
 | 文件 | 职责 |
 |------|------|
 | `src/App.tsx` | 应用外壳、导航、全局状态管理 |
-| `src/services/geminiService.ts` | Gemini AI 流式聊天、音频处理 |
-| `src/services/supabaseService.ts` | 日记 CRUD、聊天会话管理、Edge Function 调用 |
-| `src/lib/supabaseClient.ts` | Supabase 客户端初始化、用户 ID 生成 |
+| `src/services/geminiService.ts` | Edge Function 流式聊天调用、SSE 解析 |
+| `src/services/supabaseService.ts` | 日记 CRUD、聊天会话管理 |
+| `src/lib/supabaseClient.ts` | Supabase 客户端初始化、固定用户ID |
 | `src/constants.ts` | 心情主题配色、三种人格的系统指令与工具 |
 | `src/types.ts` | TypeScript 接口定义 |
-| `src/pages/Chat.tsx` | AI 聊天界面（文字/语音模式、MBTI/CBT/呼吸工具） |
+| `src/pages/Chat.tsx` | AI 聊天界面（流式文字、会话切换、交互工具） |
 | `src/pages/Calendar.tsx` | Mood 日历，从 Supabase 加载日记数据 |
 | `src/pages/Home.tsx` | 首页，心情选择与日记创建入口 |
 | `src/components/JournalModal.tsx` | 日记创建弹窗，支持图片/音频上传 |
-| `supabase/functions/gemini-chat/index.ts` | Edge Function，处理 AI 聊天请求 |
+| `supabase/functions/gemini-chat/index.ts` | Edge Function，流式 AI 聊天、会话管理、消息持久化 |
 
 ### Persona System
 三种 AI 人格，各有独特的治疗方法：
@@ -127,9 +127,11 @@ chat_messages (id, session_id, role, content, mood_detected, created_at)
 | `rational` | 理性系 (Logic) | 几何线条 | CBT 认知行为疗法 | 捕捉负面想法、CBT 引导、逆向思考 |
 | `fun` | 趣味系 (Spark) | 五彩火花 | 幽默疗法 | 毒舌锐评、MBTI 速测、一键发疯 |
 
-### Chat Features
-- **文字模式**: 标准聊天界面，支持快捷工具栏
-- **语音模式**: 录音功能，棉花糖球体动画反馈
+### Chat Features (已实现)
+- **流式文字对话**: 通过 Edge Function 调用 Gemini API，实时显示 AI 回复
+- **会话管理**: 会话下拉菜单，支持新建、切换、历史恢复
+- **消息持久化**: 所有对话自动存入 Supabase 数据库
+- **Persona 切换**: 切换人格时自动创建新会话
 - **交互工具**:
   - MBTI 速测：4 题快速性格测试
   - CBT 引导：4 步认知重构（事件→想法→证据→重构）
@@ -152,7 +154,7 @@ chat_messages (id, session_id, role, content, mood_detected, created_at)
 
 ### Data Flow
 ```
-用户操作 → 组件状态更新 → Supabase API 调用 → 数据库持久化
+用户操作 → 组件状态更新 → Edge Function / Supabase API → 数据库持久化
                 ↓
          全局状态更新 → 背景色/UI 响应
 ```
@@ -166,43 +168,75 @@ chat_messages (id, session_id, role, content, mood_detected, created_at)
 
 ### API Key Security
 - `.env.local` 已在 `.gitignore` 中，不会提交
-- 生产环境应使用 Edge Function 代理 AI 请求，避免暴露 API Key
+- 生产环境使用 Edge Function 代理 AI 请求，API Key 存储在 Supabase Secrets
 
-### User Identity
-- 使用 localStorage 存储匿名用户 ID
-- 格式：`user_{timestamp}_{random}`
-- 数据库查询按 `user_id` 过滤
+### User Identity（开发阶段）
+- 当前使用固定用户ID `demo_user`，所有访问者共享数据
+- 便于多设备测试和演示
+- **TODO**: 正式上线前需改回动态生成用户ID
 
 ### Supabase Storage
 - `journal-images`: 日记图片存储桶
 - `journal-audio`: 日记音频存储桶
 - 需在 Supabase Dashboard 创建并设置公开访问
 
-## Pending Tasks (Window 4)
+## Completed Tasks (Window 4)
 
-以下任务待完成（前端集成优化）：
+✅ 已完成的前端集成优化：
 
 ### 阶段 1：重构聊天服务层
-- [ ] `geminiService.ts` 完全切换为 Edge Function 调用
-- [ ] 移除本地 Gemini SDK 直接调用
-- [ ] 统一流式响应处理
+- [x] `geminiService.ts` 完全切换为 Edge Function 调用
+- [x] 移除本地 Gemini SDK 直接调用（保留日记摘要功能）
+- [x] 统一流式响应处理（SSE 格式解析）
 
 ### 阶段 2：Chat 页面优化
-- [ ] 会话管理 UI（会话列表、切换、新建）
-- [ ] 历史消息加载与分页
-- [ ] 流式响应实时渲染优化
-- [ ] 音频消息通过 Edge Function 处理
+- [x] 会话管理 UI（下拉菜单：会话列表、切换、新建）
+- [x] 历史消息加载（从 Supabase 恢复会话）
+- [x] 流式响应实时渲染（pendingText + 光标动画）
 
 ### 阶段 3：App.tsx 清理
-- [ ] 移除遗留的 mock 数据生成代码
-- [ ] 统一数据加载逻辑
+- [x] 确认无遗留 mock 数据
+- [x] 数据流清晰
 
 ### 阶段 4：会话管理完善
-- [ ] 会话侧边栏 UI
-- [ ] Persona 切换时自动创建新会话
-- [ ] 会话历史持久化到 localStorage
+- [x] 会话下拉菜单 UI
+- [x] Persona 切换时自动创建新会话
+- [x] 会话历史持久化到 localStorage（`famlee_last_session`）
 
-### 阶段 5：测试与优化
-- [ ] 端到端测试（新建会话、切换、历史加载）
-- [ ] 错误处理与重试机制
+### 阶段 5：代码清理
+- [x] 移除调试日志
+- [x] 修复 header 名称不一致
+- [x] 移除废弃函数
+- [x] 简化冗余逻辑
+
+## Pending Tasks (Window 5)
+
+### 语音对话功能
+
+目前语音模式 UI 已实现，但录音后无法发送到 AI。需要实现完整的语音对话功能：
+
+#### 阶段 1：音频录制优化
+- [ ] 录音格式优化（当前 `audio/webm`，考虑兼容性）
+- [ ] 录音时长限制（建议 60 秒）
+- [ ] 录音波形可视化反馈
+
+#### 阶段 2：语音转文字（STT）
+- [ ] 集成 Gemini Audio API 或 Web Speech API
+- [ ] Edge Function 添加音频处理端点
+- [ ] 前端发送音频 base64 数据
+- [ ] 转写结果显示在聊天界面
+
+#### 阶段 3：文字转语音（TTS）- 可选
+- [ ] AI 回复朗读功能
+- [ ] 集成 Web Speech API 或 Google TTS
+- [ ] 语音播放控制（播放/暂停/速度）
+
+#### 阶段 4：完整语音对话流程
+- [ ] 录音 → 转文字 → 发送到 AI → 流式回复 → (可选) 朗读
+- [ ] 语音模式下的 UI 交互优化
+- [ ] 错误处理（网络中断、转写失败等）
+
+### 其他待办
+- [ ] 端到端测试
 - [ ] 性能优化（减少不必要的 re-render）
+- [ ] 错误重试机制

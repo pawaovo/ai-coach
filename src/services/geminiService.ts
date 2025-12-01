@@ -1,4 +1,4 @@
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
@@ -22,14 +22,19 @@ const parseChunkLine = (
   line: string
 ): { text: string; done: boolean; sessionId?: string } => {
   try {
-    const parsed = JSON.parse(line);
+    // 处理 SSE 格式：移除 "data: " 前缀
+    const jsonStr = line.startsWith("data: ") ? line.slice(6) : line;
+    if (!jsonStr.trim()) return { text: "", done: false };
+
+    const parsed = JSON.parse(jsonStr);
     return {
-      text: parsed?.text ?? "",
+      // Edge Function 返回 content 字段，映射到 text
+      text: parsed?.content ?? parsed?.text ?? "",
       done: Boolean(parsed?.done),
       sessionId: parsed?.sessionId,
     };
   } catch {
-    return { text: line, done: false };
+    return { text: "", done: false };
   }
 };
 
@@ -69,7 +74,7 @@ export const streamChat = async (
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  const headerSessionId = response.headers.get("x-chat-session-id") || undefined;
+  const headerSessionId = response.headers.get("X-Session-Id") || undefined;
   let resolvedSessionId = headerSessionId || sessionId;
   let buffer = "";
   let finished = false;
@@ -140,39 +145,3 @@ export const blobToB64 = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
-export const sendAudioMessage = async (
-  chat: Chat,
-  audioBlob: Blob
-): Promise<string> => {
-  try {
-    const base64Audio = await blobToB64(audioBlob);
-    const audioPart = {
-      inlineData: {
-        mimeType: audioBlob.type,
-        data: base64Audio,
-      },
-    };
-
-    const response: GenerateContentResponse = await chat.sendMessage({
-      message: [audioPart],
-    });
-
-    return response.text || "我好像没听清，可以再说一遍吗？";
-  } catch (error) {
-    console.error("Error sending audio message:", error);
-    return "语音连接似乎中断了，请尝试文字输入。";
-  }
-};
-
-// 临时函数：创建聊天会话（使用本地 Gemini SDK）
-// 窗口3会将此替换为调用 Edge Function
-export const createChatSession = (
-  systemInstruction: string,
-  tools?: any[]
-): Chat => {
-  return ai.chats.create({
-    model: "gemini-2.5-flash",
-    systemInstruction,
-    tools,
-  });
-};

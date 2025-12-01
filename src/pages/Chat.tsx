@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Mic, Keyboard, AlertCircle, Sparkles, X, ChevronRight, Check, ArrowRight, AudioLines } from 'lucide-react';
-import { createChatSession, sendAudioMessage } from '../services/geminiService';
-import { ChatMessage, MoodType, PersonaConfig } from '../types';
-import { Chat, GenerateContentResponse } from '@google/genai';
+import { Send, Mic, AlertCircle, X, ChevronRight, ArrowRight, AudioLines, ChevronDown, Plus, MessageSquare } from 'lucide-react';
+import { streamChat, StreamChunk } from '../services/geminiService';
+import { listChatSessions, fetchMessages } from '../services/supabaseService';
+import { ChatMessage, ChatMessageDB, ChatSession, MoodType, PersonaConfig } from '../types';
 
 interface ChatProps {
   setGlobalMood: (mood: MoodType) => void;
@@ -13,6 +13,14 @@ interface ChatProps {
 }
 
 type ChatMode = 'text' | 'voice';
+
+// 数据库消息转换为前端消息
+const mapDBMessageToLocal = (msg: ChatMessageDB): ChatMessage => ({
+  id: msg.id,
+  role: msg.role,
+  text: msg.content,
+  timestamp: new Date(msg.created_at),
+});
 
 // MBTI Questions Data
 const MBTI_QUESTIONS = [
@@ -78,11 +86,11 @@ const CBT_STEPS = [
     }
 ];
 
-export const ChatPage: React.FC<ChatProps> = ({ 
-  setGlobalMood, 
-  initialMessage, 
-  clearInitialMessage, 
-  currentPersona 
+export const ChatPage: React.FC<ChatProps> = ({
+  setGlobalMood,
+  initialMessage,
+  clearInitialMessage,
+  currentPersona
 }) => {
   const [mode, setMode] = useState<ChatMode>('text');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -90,6 +98,13 @@ export const ChatPage: React.FC<ChatProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
+
+  // 会话管理状态
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [isSessionMenuOpen, setIsSessionMenuOpen] = useState(false);
+  const [pendingText, setPendingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
 
   // MBTI State
   const [isMBTIModalOpen, setIsMBTIModalOpen] = useState(false);
@@ -106,45 +121,104 @@ export const ChatPage: React.FC<ChatProps> = ({
   const [cbtStep, setCbtStep] = useState(0);
   const [cbtData, setCbtData] = useState({ event: '', thought: '', evidence: '', reframe: '' });
 
-  const chatSessionRef = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitialRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const prevPersonaRef = useRef(currentPersona.id);
 
-  // Initialize Chat with Persona-specific instruction
-  useEffect(() => {
-    // Re-create session if persona changes
-    chatSessionRef.current = createChatSession(currentPersona.systemInstruction);
-    
-    // Set initial greeting based on persona
-    let greeting = "";
-    if (currentPersona.id === 'healing') {
-        greeting = "你好呀，我是 Melty (小融)。我会一直在这里听你说。你现在感觉怎么样？";
-    } else if (currentPersona.id === 'rational') {
-        greeting = "你好，我是 Logic。让我们冷静下来，理智地分析一下你遇到的问题吧。";
+  // 获取 Persona 对应的问候语
+  const getGreeting = (personaId: string): string => {
+    if (personaId === 'healing') {
+      return "你好呀，我是 Melty (小融)。我会一直在这里听你说。你现在感觉怎么样？";
+    } else if (personaId === 'rational') {
+      return "你好，我是 Logic。让我们冷静下来，理智地分析一下你遇到的问题吧。";
     } else {
-        greeting = "嘿！我是 Spark。谁又惹你不开心了？来，说出来让我开心...啊不，让我帮你怼回去！";
+      return "嘿！我是 Spark。谁又惹你不开心了？来，说出来让我开心...啊不，让我帮你怼回去！";
     }
+  };
 
-    setMessages([{
-      id: 'welcome',
-      role: 'model',
-      text: greeting,
-      timestamp: new Date()
-    }]);
+  // 初始化：加载会话列表和历史
+  useEffect(() => {
+    const init = async () => {
+      try {
+        // 加载会话列表
+        const sessionList = await listChatSessions();
+        setSessions(sessionList);
 
-    hasSentInitialRef.current = false; // Reset for potential initial message
-  }, [currentPersona]);
+        // 尝试从 localStorage 恢复最近会话
+        const cachedSessionId = localStorage.getItem('famlee_last_session');
+        const matchingSession = cachedSessionId
+          ? sessionList.find(s => s.id === cachedSessionId && s.persona === currentPersona.id)
+          : null;
+
+        if (matchingSession) {
+          // 恢复历史会话
+          setSessionId(matchingSession.id);
+          const history = await fetchMessages(matchingSession.id);
+          if (history.length > 0) {
+            setMessages(history.map(mapDBMessageToLocal));
+          } else {
+            // 会话存在但无消息，显示问候语
+            setMessages([{
+              id: 'welcome',
+              role: 'model',
+              text: getGreeting(currentPersona.id),
+              timestamp: new Date()
+            }]);
+          }
+        } else {
+          // 无匹配会话，显示问候语（首次发送时创建会话）
+          setSessionId(null);
+          setMessages([{
+            id: 'welcome',
+            role: 'model',
+            text: getGreeting(currentPersona.id),
+            timestamp: new Date()
+          }]);
+        }
+      } catch (err) {
+        console.error('初始化聊天失败:', err);
+        // 降级：显示问候语
+        setMessages([{
+          id: 'welcome',
+          role: 'model',
+          text: getGreeting(currentPersona.id),
+          timestamp: new Date()
+        }]);
+      }
+    };
+
+    init();
+    hasSentInitialRef.current = false;
+  }, []); // 仅首次加载
+
+  // Persona 切换：创建新会话
+  useEffect(() => {
+    if (prevPersonaRef.current !== currentPersona.id) {
+      prevPersonaRef.current = currentPersona.id;
+      // 清空当前会话，显示新 Persona 的问候语
+      setSessionId(null);
+      setPendingText('');
+      setIsStreaming(false);
+      setMessages([{
+        id: 'welcome',
+        role: 'model',
+        text: getGreeting(currentPersona.id),
+        timestamp: new Date()
+      }]);
+      hasSentInitialRef.current = false;
+    }
+  }, [currentPersona.id]);
 
   // Handle incoming message from other pages (e.g. Journal)
   useEffect(() => {
-    if (initialMessage && !hasSentInitialRef.current && chatSessionRef.current) {
-        hasSentInitialRef.current = true;
-        setMode('text'); // Ensure we are in text mode to see the synced message
-        setTimeout(() => {
-            handleSendMessage(initialMessage);
-            if (clearInitialMessage) clearInitialMessage();
-        }, 500);
+    if (initialMessage && !hasSentInitialRef.current) {
+      hasSentInitialRef.current = true;
+      setMode('text');
+      setTimeout(() => {
+        handleSendMessage(initialMessage);
+        if (clearInitialMessage) clearInitialMessage();
+      }, 500);
     }
   }, [initialMessage]);
 
@@ -189,16 +263,49 @@ export const ChatPage: React.FC<ChatProps> = ({
   }, [isBreathingModalOpen]);
 
   const analyzeMood = (text: string) => {
-      if (text.includes('焦虑') || text.includes('担心') || text.includes('害怕')) {
-          setGlobalMood(MoodType.ANXIOUS);
-      } else if (text.includes('开心') || text.includes('高兴') || text.includes('棒')) {
-          setGlobalMood(MoodType.HAPPY);
-      }
+    if (text.includes('焦虑') || text.includes('担心') || text.includes('害怕')) {
+      setGlobalMood(MoodType.ANXIOUS);
+    } else if (text.includes('开心') || text.includes('高兴') || text.includes('棒')) {
+      setGlobalMood(MoodType.HAPPY);
+    }
   };
 
+  // 切换会话
+  const switchSession = async (session: ChatSession) => {
+    try {
+      setSessionId(session.id);
+      localStorage.setItem('famlee_last_session', session.id);
+      const history = await fetchMessages(session.id);
+      setMessages(history.length > 0 ? history.map(mapDBMessageToLocal) : [{
+        id: 'welcome',
+        role: 'model',
+        text: getGreeting(session.persona),
+        timestamp: new Date()
+      }]);
+      setIsSessionMenuOpen(false);
+      setPendingText('');
+    } catch (err) {
+      console.error('切换会话失败:', err);
+    }
+  };
+
+  // 新建会话
+  const createNewSession = () => {
+    setSessionId(null);
+    setPendingText('');
+    setMessages([{
+      id: 'welcome',
+      role: 'model',
+      text: getGreeting(currentPersona.id),
+      timestamp: new Date()
+    }]);
+    setIsSessionMenuOpen(false);
+  };
+
+  // 发送消息（流式）
   const handleSendMessage = async (textOverride?: string) => {
     const textToSend = textOverride || inputValue;
-    if (!textToSend.trim() || isLoading || !chatSessionRef.current) return;
+    if (!textToSend.trim() || isLoading || isStreaming) return;
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -210,86 +317,95 @@ export const ChatPage: React.FC<ChatProps> = ({
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
     setIsLoading(true);
+    setIsStreaming(true);
+    setPendingText('');
+
+    let accumulatedText = '';
+    let newSessionId = sessionId;
 
     try {
-        const response: GenerateContentResponse = await chatSessionRef.current.sendMessage({ message: userMsg.text });
-        const text = response.text || "我在听...";
-        analyzeMood(text);
+      await streamChat(
+        textToSend,
+        currentPersona.id,
+        sessionId ?? undefined,
+        false,
+        undefined,
+        (chunk: StreamChunk) => {
+          // 处理 sessionId（首次发送时后端创建会话）
+          if (chunk.sessionId && !newSessionId) {
+            newSessionId = chunk.sessionId;
+            setSessionId(chunk.sessionId);
+            localStorage.setItem('famlee_last_session', chunk.sessionId);
+            // 更新会话列表
+            listChatSessions().then(setSessions).catch(console.error);
+          }
 
-        const modelMsg: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: 'model',
-            text: text,
-            timestamp: new Date()
-        };
-        setMessages(prev => [...prev, modelMsg]);
+          // 累积文本
+          if (chunk.text) {
+            accumulatedText += chunk.text;
+            setPendingText(accumulatedText);
+          }
+
+          // 流结束
+          if (chunk.done) {
+            if (accumulatedText) {
+              analyzeMood(accumulatedText);
+              const modelMsg: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'model',
+                text: accumulatedText,
+                timestamp: new Date()
+              };
+              setMessages(prev => [...prev, modelMsg]);
+            }
+            setPendingText('');
+            setIsStreaming(false);
+            setIsLoading(false);
+          }
+        }
+      );
     } catch (error) {
-        console.error(error);
-        const errorMsg: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: 'model',
-            text: "我现在连接有点不稳定，但我一直都在。",
-            timestamp: new Date()
-        };
-        setMessages(prev => [...prev, errorMsg]);
-    } finally {
-        setIsLoading(false);
+      console.error('发送消息失败:', error);
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: "我现在连接有点不稳定，但我一直都在。请稍后再试。",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+      setPendingText('');
+      setIsStreaming(false);
+      setIsLoading(false);
     }
   };
 
   const handleToolClick = (toolName: string) => {
-      // MBTI Quick Test
-      if (toolName.includes("MBTI")) {
-          setMbtiStep(0);
-          setMbtiAnswers([]);
-          setIsMBTIModalOpen(true);
-          return;
-      }
+    // MBTI Quick Test
+    if (toolName.includes("MBTI")) {
+      setMbtiStep(0);
+      setMbtiAnswers([]);
+      setIsMBTIModalOpen(true);
+      return;
+    }
 
-      // Mindfulness Breathing
-      if (toolName.includes("正念呼吸")) {
-          setIsBreathingModalOpen(true);
-          return;
-      }
+    // Mindfulness Breathing
+    if (toolName.includes("正念呼吸")) {
+      setIsBreathingModalOpen(true);
+      return;
+    }
 
-      // CBT Therapy
-      if (toolName.includes("CBT")) {
-          setCbtStep(0);
-          setCbtData({ event: '', thought: '', evidence: '', reframe: '' });
-          setIsCBTModalOpen(true);
-          return;
-      }
+    // CBT Therapy
+    if (toolName.includes("CBT")) {
+      setCbtStep(0);
+      setCbtData({ event: '', thought: '', evidence: '', reframe: '' });
+      setIsCBTModalOpen(true);
+      return;
+    }
 
-      // Default logic for other tools
-      const prompt = `(用户点击了快捷工具) 请带领我进行"${toolName}"。请直接开始引导或互动。`;
-      
-      const displayMsg = toolName; 
-      const userMsg: ChatMessage = {
-        id: Date.now().toString(),
-        role: 'user',
-        text: displayMsg,
-        timestamp: new Date(),
-        isTools: true
-      };
-      setMessages(prev => [...prev, userMsg]);
-      setIsLoading(true);
-
-      if (chatSessionRef.current) {
-          chatSessionRef.current.sendMessage({ message: prompt }).then((response) => {
-               const text = response.text || "好的，我们开始吧。";
-               const modelMsg: ChatMessage = {
-                    id: (Date.now() + 1).toString(),
-                    role: 'model',
-                    text: text,
-                    timestamp: new Date()
-               };
-               setMessages(prev => [...prev, modelMsg]);
-               setIsLoading(false);
-          }).catch(err => {
-              console.error(err);
-              setIsLoading(false);
-          });
-      }
+    // Default logic for other tools - 使用流式 API
+    const prompt = `(用户点击了快捷工具) 请带领我进行"${toolName}"。请直接开始引导或互动。`;
+    // 直接发送，handleSendMessage 会添加用户消息
+    handleSendMessage(prompt);
   };
 
   const handleMBTISelection = (value: string) => {
@@ -335,30 +451,15 @@ export const ChatPage: React.FC<ChatProps> = ({
             if (e.data.size > 0) chunks.push(e.data);
         };
 
-        mediaRecorder.onstop = async () => {
-            const blob = new Blob(chunks, { type: 'audio/webm' });
+        mediaRecorder.onstop = () => {
             stream.getTracks().forEach(track => track.stop());
-            
-            // Send to API
-            setIsLoading(true);
-            try {
-                if (chatSessionRef.current) {
-                    const responseText = await sendAudioMessage(chatSessionRef.current, blob);
-                    analyzeMood(responseText);
-                    
-                    const modelMsg: ChatMessage = {
-                        id: Date.now().toString(),
-                        role: 'model',
-                        text: responseText,
-                        timestamp: new Date()
-                    };
-                    setMessages(prev => [...prev, modelMsg]);
-                }
-            } catch (error) {
-                console.error("Audio send error", error);
-            } finally {
-                setIsLoading(false);
-            }
+            // 音频功能暂未实现，显示提示消息
+            setMessages(prev => [...prev, {
+              id: Date.now().toString(),
+              role: 'model',
+              text: "语音功能正在开发中，请先使用文字聊天哦~",
+              timestamp: new Date()
+            }]);
         };
 
         mediaRecorder.start();
@@ -385,17 +486,37 @@ export const ChatPage: React.FC<ChatProps> = ({
       else startVoiceRecording();
   };
 
+  // 格式化会话时间
+  const formatSessionTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 1) {
+      return '昨天';
+    } else if (diffDays < 7) {
+      return `${diffDays}天前`;
+    } else {
+      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+    }
+  };
+
+  // 获取当前 Persona 的会话列表
+  const currentPersonaSessions = sessions.filter(s => s.persona === currentPersona.id);
+
   return (
     <div className="h-full flex flex-col pt-10 pb-24 px-4 max-w-2xl mx-auto relative">
-      
-      {/* Top Section: IP Image ONLY (Buttons Removed) */}
+
+      {/* Top Section: IP Image + Session Selector */}
       <div className="flex flex-col items-center mb-4 z-10 shrink-0">
           <div className="relative w-24 h-24">
               <div className="absolute inset-0 bg-yellow-200/50 rounded-full blur-xl animate-pulse"></div>
-              <img 
-                  src={currentPersona.image} 
-                  alt={currentPersona.title} 
-                  className="w-full h-full object-cover rounded-full border-4 border-white/50 relative z-10 drop-shadow-xl" 
+              <img
+                  src={currentPersona.image}
+                  alt={currentPersona.title}
+                  className="w-full h-full object-cover rounded-full border-4 border-white/50 relative z-10 drop-shadow-xl"
               />
                {/* Small Persona Label Badge */}
               <div className="absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 z-20 whitespace-nowrap">
@@ -404,7 +525,67 @@ export const ChatPage: React.FC<ChatProps> = ({
                   </span>
               </div>
           </div>
+
+          {/* Session Dropdown */}
+          <div className="relative mt-4">
+            <button
+              onClick={() => setIsSessionMenuOpen(!isSessionMenuOpen)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/40 hover:bg-white/60 backdrop-blur-md rounded-full text-sm text-gray-700 border border-white/50 shadow-sm transition-all"
+            >
+              <MessageSquare size={14} />
+              <span className="max-w-[150px] truncate">
+                {sessionId ? `对话 ${formatSessionTime(sessions.find(s => s.id === sessionId)?.created_at || '')}` : '新对话'}
+              </span>
+              <ChevronDown size={14} className={`transition-transform ${isSessionMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isSessionMenuOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 overflow-hidden z-50 animate-fade-in">
+                {/* New Session Button */}
+                <button
+                  onClick={createNewSession}
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
+                >
+                  <Plus size={16} className="text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">新建对话</span>
+                </button>
+
+                {/* Session List */}
+                <div className="max-h-48 overflow-y-auto">
+                  {currentPersonaSessions.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-gray-400 text-center">暂无历史对话</div>
+                  ) : (
+                    currentPersonaSessions.slice(0, 5).map(session => (
+                      <button
+                        key={session.id}
+                        onClick={() => switchSession(session)}
+                        className={`w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors text-left ${
+                          session.id === sessionId ? 'bg-indigo-50' : ''
+                        }`}
+                      >
+                        <span className="text-sm text-gray-700 truncate">
+                          与 {session.persona === 'healing' ? 'Melty' : session.persona === 'rational' ? 'Logic' : 'Spark'} 的对话
+                        </span>
+                        <span className="text-xs text-gray-400 shrink-0 ml-2">
+                          {formatSessionTime(session.created_at)}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
       </div>
+
+      {/* Click outside to close dropdown */}
+      {isSessionMenuOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setIsSessionMenuOpen(false)}
+        />
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
@@ -435,7 +616,17 @@ export const ChatPage: React.FC<ChatProps> = ({
                             </div>
                         </div>
                     ))}
-                    {isLoading && (
+                    {/* 流式响应：显示正在生成的文本 */}
+                    {isStreaming && pendingText && (
+                        <div className="flex justify-start">
+                            <div className="max-w-[85%] p-4 rounded-2xl rounded-bl-none backdrop-blur-md text-sm font-light leading-relaxed tracking-wide shadow-sm bg-white/60 text-gray-900 border border-white/60">
+                                {pendingText}
+                                <span className="inline-block w-1.5 h-4 bg-gray-400 ml-1 animate-pulse"></span>
+                            </div>
+                        </div>
+                    )}
+                    {/* 等待响应：显示加载动画 */}
+                    {isLoading && !pendingText && (
                         <div className="flex justify-start">
                             <div className="bg-white/40 p-3 rounded-2xl rounded-bl-none">
                                 <div className="flex space-x-1">
