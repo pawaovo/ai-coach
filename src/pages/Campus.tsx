@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
-import { MapPin, Clock, HeartHandshake, Phone, Ticket, CheckCircle, Star } from 'lucide-react';
+import { MapPin, Clock, HeartHandshake, Phone, Ticket, CheckCircle, Star, X, Calendar, Users, Send } from 'lucide-react';
 import { CampusEvent } from '../types';
 
 export const CampusPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<number>(12); // Mock date selection
+  const [selectedEvent, setSelectedEvent] = useState<CampusEvent | null>(null);
+  const [registeredEvents, setRegisteredEvents] = useState<Set<string>>(new Set(['1'])); // 默认已报名第一个活动
 
   // Extended mock data
   const events: CampusEvent[] = [
@@ -26,14 +28,14 @@ export const CampusPage: React.FC = () => {
         description: '邀请北师大心理学教授，讲解如何科学应对考试焦虑，提升复习效率。',
         imageUrl: 'https://images.unsplash.com/photo-1544531586-fde5298cdd40?auto=format&fit=crop&w=400&q=80'
     },
-    { 
-        id: '3', 
-        title: '“色彩与情绪” 艺术疗愈', 
-        date: '10月18日 16:00', 
-        type: '聚会', 
+    {
+        id: '3',
+        title: '"色彩与情绪" 艺术疗愈',
+        date: '10月18日 16:00',
+        type: '工坊',
         location: '沙河校区 · 活动中心',
-        description: '无需绘画基础，通过色彩表达自我，释放潜意识中的情绪压力。',
-        imageUrl: 'https://images.unsplash.com/photo-1460661631189-a05e6b7e851d?auto=format&fit=crop&w=400&q=80'
+        description: '无需绘画基础，通过色彩表达自我，释放潜意识中的情绪压力。材料费用已包含在报名费中。',
+        imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=400&q=80'
     },
     { 
         id: '4', 
@@ -67,6 +69,23 @@ export const CampusPage: React.FC = () => {
   const featuredEvent = events[0];
   const exclusiveEvent = events[4]; // Sandplay
   const otherEvents = events.slice(1, 4);
+
+  // 报名/取消报名
+  const handleRegister = (eventId: string, e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setRegisteredEvents(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(eventId)) {
+              newSet.delete(eventId);
+          } else {
+              newSet.add(eventId);
+          }
+          return newSet;
+      });
+  };
+
+  // 检查是否已报名
+  const isRegistered = (eventId: string) => registeredEvents.has(eventId);
 
   return (
     <div className="h-full flex flex-col pt-10 px-0 pb-24 max-w-2xl mx-auto overflow-y-auto scrollbar-hide bg-gray-50/50">
@@ -155,10 +174,20 @@ export const CampusPage: React.FC = () => {
                  <span className="h-1 w-1 rounded-full bg-red-400"></span>
              </div>
              
-             <div className="relative h-48 w-full rounded-[2rem] overflow-hidden shadow-lg mb-8 group cursor-pointer">
+             <div
+                 onClick={() => setSelectedEvent(featuredEvent)}
+                 className="relative h-48 w-full rounded-[2rem] overflow-hidden shadow-lg mb-8 group cursor-pointer"
+             >
                  <img src={featuredEvent.imageUrl} alt="event" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                 
+
+                 {/* 已报名标记 */}
+                 {isRegistered(featuredEvent.id) && (
+                     <div className="absolute top-4 right-4 bg-green-500 text-white px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1">
+                         <CheckCircle size={12} /> 已报名
+                     </div>
+                 )}
+
                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
                      <span className="inline-block px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-[10px] font-bold uppercase mb-2 border border-white/30">
                          {featuredEvent.type}
@@ -177,15 +206,27 @@ export const CampusPage: React.FC = () => {
                     <Star size={14} className="text-yellow-500 fill-yellow-500" />
                     <h3 className="text-sm font-bold text-gray-800">专属推荐</h3>
                 </div>
-                
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-1 rounded-[2rem] shadow-sm">
-                    <div className="bg-white rounded-[1.8rem] p-4 flex gap-4 items-center">
+
+                <div
+                    onClick={() => setSelectedEvent(exclusiveEvent)}
+                    className="bg-gradient-to-r from-indigo-50 to-purple-50 p-1 rounded-[2rem] shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                >
+                    <div className="bg-white rounded-[1.8rem] p-4 flex gap-4 items-center relative">
                         <img src={exclusiveEvent.imageUrl} alt="exclusive" className="w-20 h-20 rounded-2xl object-cover" />
                         <div className="flex-1">
                             <div className="text-[10px] text-indigo-500 font-medium mb-1">根据你的心情分析</div>
                             <h4 className="text-base font-bold text-gray-800 mb-1">{exclusiveEvent.title}</h4>
                             <p className="text-xs text-gray-400 line-clamp-1 mb-2">{exclusiveEvent.description}</p>
-                            <button className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-full font-medium">查看详情</button>
+                            <button
+                                onClick={(e) => handleRegister(exclusiveEvent.id, e)}
+                                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                                    isRegistered(exclusiveEvent.id)
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-900 text-white hover:bg-black'
+                                }`}
+                            >
+                                {isRegistered(exclusiveEvent.id) ? '已报名 ✓' : '立即报名'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -196,7 +237,11 @@ export const CampusPage: React.FC = () => {
              {/* Event List with Images */}
              <div className="space-y-4">
                 {otherEvents.map(event => (
-                    <div key={event.id} className="bg-white p-3 rounded-[1.5rem] shadow-sm border border-gray-100 flex gap-4 items-center group">
+                    <div
+                        key={event.id}
+                        onClick={() => setSelectedEvent(event)}
+                        className="bg-white p-3 rounded-[1.5rem] shadow-sm border border-gray-100 flex gap-4 items-center group cursor-pointer hover:shadow-md transition-shadow"
+                    >
                         {/* Thumbnail */}
                         <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
                             <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -217,13 +262,121 @@ export const CampusPage: React.FC = () => {
                         </div>
 
                         {/* Action */}
-                        <button className="h-8 px-3 rounded-full border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-900 hover:text-white transition-colors">
-                            报名
+                        <button
+                            onClick={(e) => handleRegister(event.id, e)}
+                            className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${
+                                isRegistered(event.id)
+                                    ? 'bg-green-500 text-white'
+                                    : 'border border-gray-200 text-gray-600 hover:bg-gray-900 hover:text-white'
+                            }`}
+                        >
+                            {isRegistered(event.id) ? '已报名' : '报名'}
                         </button>
                     </div>
                 ))}
              </div>
         </div>
+
+        {/* 活动详情悬浮卡片 */}
+        {selectedEvent && (
+            <>
+                {/* 高斯模糊背景遮罩 */}
+                <div
+                    className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-fade-in"
+                    onClick={() => setSelectedEvent(null)}
+                />
+                {/* 悬浮卡片 */}
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                    <div className="pointer-events-auto w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-scale-in">
+                        {/* 活动图片 */}
+                        <div className="relative h-44 overflow-hidden">
+                            <img
+                                src={selectedEvent.imageUrl}
+                                alt={selectedEvent.title}
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                            {/* 关闭按钮 */}
+                            <button
+                                onClick={() => setSelectedEvent(null)}
+                                className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors shadow-sm"
+                            >
+                                <X size={16} className="text-gray-600" />
+                            </button>
+
+                            {/* 类型标签 */}
+                            <div className="absolute bottom-3 left-4">
+                                <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/30">
+                                    {selectedEvent.type}
+                                </span>
+                            </div>
+
+                            {/* 已报名标记 */}
+                            {isRegistered(selectedEvent.id) && (
+                                <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                                    <CheckCircle size={12} /> 已报名
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 活动信息 */}
+                        <div className="p-5">
+                            <h3 className="text-lg font-bold text-gray-800 mb-3">{selectedEvent.title}</h3>
+
+                            {/* 时间和地点 */}
+                            <div className="space-y-2 mb-4">
+                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                    <div className="p-2 bg-blue-50 rounded-lg">
+                                        <Calendar size={14} className="text-blue-500" />
+                                    </div>
+                                    <span>{selectedEvent.date}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                    <div className="p-2 bg-rose-50 rounded-lg">
+                                        <MapPin size={14} className="text-rose-500" />
+                                    </div>
+                                    <span>{selectedEvent.location}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                    <div className="p-2 bg-amber-50 rounded-lg">
+                                        <Users size={14} className="text-amber-500" />
+                                    </div>
+                                    <span>已报名 {Math.floor(Math.random() * 20) + 5} 人</span>
+                                </div>
+                            </div>
+
+                            {/* 活动描述 */}
+                            <div className="bg-gray-50 rounded-xl p-3 mb-5">
+                                <p className="text-sm text-gray-600 leading-relaxed">
+                                    {selectedEvent.description}
+                                </p>
+                            </div>
+
+                            {/* 报名按钮 */}
+                            <button
+                                onClick={() => handleRegister(selectedEvent.id)}
+                                className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                                    isRegistered(selectedEvent.id)
+                                        ? 'bg-gray-100 text-gray-500'
+                                        : 'bg-gray-900 text-white hover:bg-black shadow-lg'
+                                }`}
+                            >
+                                {isRegistered(selectedEvent.id) ? (
+                                    <>
+                                        <CheckCircle size={16} /> 取消报名
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send size={16} /> 立即报名
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </>
+        )}
     </div>
   );
 };

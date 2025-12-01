@@ -41,6 +41,11 @@ export const HomePage: React.FC<HomeProps> = ({
 
   const switchCard = (index: number) => {
       if (index < 0 || index >= PERSONAS.length) return;
+      // "更多"形象不可选中为当前 persona
+      if (PERSONAS[index].id === 'coming_soon') {
+          setActiveIndex(index); // 可以滑动到该位置查看
+          return; // 但不设置为当前 persona
+      }
       setActiveIndex(index);
       setPersona(PERSONAS[index]);
   };
@@ -69,6 +74,7 @@ export const HomePage: React.FC<HomeProps> = ({
   // Helper to determine styles based on active index
   const getCardStyle = (index: number) => {
       const offset = index - activeIndex; // -1, 0, 1
+      const isComingSoon = PERSONAS[index]?.id === 'coming_soon';
 
       let transform = '';
       let zIndex = 0;
@@ -77,9 +83,15 @@ export const HomePage: React.FC<HomeProps> = ({
 
       if (offset === 0) {
           // Center
-          transform = 'translateX(0) scale(1) rotate(0deg)';
+          transform = isComingSoon
+              ? 'translateX(0) scale(0.7) rotate(0deg)' // "更多"形象缩小
+              : 'translateX(0) scale(1) rotate(0deg)';
           zIndex = 20;
-          filter = 'brightness(100%)';
+          // "更多"形象：模糊但能看到轮廓
+          filter = isComingSoon
+              ? 'brightness(80%) blur(18px) saturate(0.3)'
+              : 'brightness(100%)';
+          opacity = isComingSoon ? 0.6 : 1;
       } else if (offset < 0) {
           // Left
           transform = 'translateX(-140px) scale(0.7) rotate(-15deg)';
@@ -88,19 +100,22 @@ export const HomePage: React.FC<HomeProps> = ({
           filter = 'brightness(60%) blur(6px)';
       } else {
           // Right
-          transform = 'translateX(140px) scale(0.7) rotate(15deg)';
+          transform = isComingSoon
+              ? 'translateX(140px) scale(0.5) rotate(15deg)' // "更多"形象在右侧时更小
+              : 'translateX(140px) scale(0.7) rotate(15deg)';
           zIndex = 10;
-          opacity = 0.35;
-          filter = 'brightness(60%) blur(6px)';
+          opacity = isComingSoon ? 0.45 : 0.35;
+          filter = isComingSoon
+              ? 'brightness(70%) blur(15px) saturate(0.3)'
+              : 'brightness(60%) blur(6px)';
       }
 
-      // Hide if out of range of visible 3 (though we only have 3)
+      // Hide if out of range of visible 3
       if (Math.abs(offset) > 1) {
            opacity = 0;
-           pointerEvents: 'none';
       }
 
-      return { transform, zIndex, opacity, filter };
+      return { transform, zIndex, opacity, filter, isComingSoon };
   };
 
   return (
@@ -132,21 +147,26 @@ export const HomePage: React.FC<HomeProps> = ({
             {PERSONAS.map((persona, index) => {
                 const style = getCardStyle(index);
                 const offset = index - activeIndex;
+                const isComingSoon = persona.id === 'coming_soon';
                 return (
                     <div
                         key={persona.id}
                         onClick={() => switchCard(index)}
-                        className="absolute w-96 h-96 transition-all duration-500 ease-out cursor-pointer hover:scale-105 flex items-center justify-center"
+                        className={`absolute w-96 h-96 transition-all duration-500 ease-out flex items-center justify-center ${
+                            isComingSoon ? 'cursor-default' : 'cursor-pointer hover:scale-105'
+                        }`}
                         style={{
-                            ...style
+                            transform: style.transform,
+                            zIndex: style.zIndex,
+                            opacity: style.opacity,
                         }}
                     >
                          <img
                             src={persona.image}
                             alt={persona.title}
-                            className="w-80 h-80 object-contain pointer-events-none"
+                            className={`object-contain pointer-events-none ${isComingSoon ? 'w-64 h-64' : 'w-80 h-80'}`}
                             style={{
-                                filter: `${style.filter} drop-shadow(0 10px 30px rgba(0,0,0,${activeIndex === index ? '0.2' : '0.05'}))`
+                                filter: `${style.filter} drop-shadow(0 10px 30px rgba(0,0,0,${activeIndex === index && !isComingSoon ? '0.2' : '0.05'}))`
                             }}
                          />
                     </div>
@@ -155,11 +175,13 @@ export const HomePage: React.FC<HomeProps> = ({
         </div>
 
         {/* Dynamic Text & Persona Details */}
-        <div className="flex-1 flex flex-col items-center justify-start min-h-[140px] transition-all duration-500 mt-4">
+        <div className={`flex-1 flex flex-col items-center justify-start min-h-[140px] transition-all duration-500 ${
+            PERSONAS[activeIndex]?.id === 'coming_soon' ? '-mt-24' : 'mt-4'
+        }`}>
              <h2 className="text-xl font-medium text-gray-800 mb-2 tracking-widest">
                  {PERSONAS[activeIndex].title}
              </h2>
-             
+
              {/* Tags */}
              <div className="flex gap-2 mb-4 justify-center">
                  {PERSONAS[activeIndex].tags.map(tag => (
@@ -175,23 +197,29 @@ export const HomePage: React.FC<HomeProps> = ({
              </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4 w-full max-w-sm mx-auto mt-auto mb-10">
-            <button 
-                onClick={() => setPage('chat')}
-                className="glass-panel p-5 rounded-3xl flex flex-col items-center gap-2 hover:bg-white/20 transition-all border border-white/30 hover:scale-[1.02] group"
-            >
-                <span className="text-2xl group-hover:scale-110 transition-transform">💬</span>
-                <span className="text-sm font-light text-gray-700">疗愈对话</span>
-            </button>
-            <button 
-                onClick={() => setIsJournalModalOpen(true)}
-                className="glass-panel p-5 rounded-3xl flex flex-col items-center gap-2 hover:bg-white/20 transition-all border border-white/30 hover:scale-[1.02] group"
-            >
-                <span className="text-2xl group-hover:scale-110 transition-transform">📝</span>
-                <span className="text-sm font-light text-gray-700">情绪记录</span>
-            </button>
-        </div>
+        {/* Quick Actions - 当显示"更多"形象时隐藏 */}
+        {PERSONAS[activeIndex]?.id !== 'coming_soon' ? (
+            <div className="grid grid-cols-2 gap-4 w-full max-w-sm mx-auto mt-auto mb-10">
+                <button
+                    onClick={() => setPage('chat')}
+                    className="glass-panel p-5 rounded-3xl flex flex-col items-center gap-2 hover:bg-white/20 transition-all border border-white/30 hover:scale-[1.02] group"
+                >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">💬</span>
+                    <span className="text-sm font-light text-gray-700">疗愈对话</span>
+                </button>
+                <button
+                    onClick={() => setIsJournalModalOpen(true)}
+                    className="glass-panel p-5 rounded-3xl flex flex-col items-center gap-2 hover:bg-white/20 transition-all border border-white/30 hover:scale-[1.02] group"
+                >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">📝</span>
+                    <span className="text-sm font-light text-gray-700">情绪记录</span>
+                </button>
+            </div>
+        ) : (
+            <div className="w-full max-w-sm mx-auto mt-auto mb-10 text-center">
+                <p className="text-xs text-gray-400 font-light">← 滑动选择其他角色开始对话</p>
+            </div>
+        )}
 
         <JournalModal 
             isOpen={isJournalModalOpen}

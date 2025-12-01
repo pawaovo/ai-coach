@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { MoodType, JournalEntry } from '../types';
 import { ChevronLeft, ChevronRight, TrendingUp, Zap, BookOpen, Mic, Activity, Sun, CloudRain, Loader2 } from 'lucide-react';
 import { getJournals } from '../services/supabaseService';
@@ -16,6 +16,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({ setGlobalMood }) => 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 追踪用户是否主动选择过日期（用于控制是否更新全局 mood）
+  const userHasSelected = useRef(false);
 
   // 加载日记数据
   useEffect(() => {
@@ -84,7 +87,11 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({ setGlobalMood }) => 
   }, [entries, selectedDate]);
 
   // Effect to update Global Mood based on Selected Date
+  // 只在用户主动选择日期时才更新全局 mood
   useEffect(() => {
+    // 如果用户没有主动选择过，不更新全局 mood
+    if (!userHasSelected.current) return;
+
     if (selectedDate) {
         // Find entries for this specific day
         const dayEntries = entries.filter(e => {
@@ -209,8 +216,11 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({ setGlobalMood }) => 
 
                     return (
                         <div key={day} className="flex flex-col items-center">
-                            <button 
-                                onClick={() => setSelectedDate(currentDayDate)}
+                            <button
+                                onClick={() => {
+                                    userHasSelected.current = true; // 标记用户已主动选择
+                                    setSelectedDate(currentDayDate);
+                                }}
                                 className={`
                                     w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 relative
                                     ${isSelected ? 'bg-gray-800 text-white shadow-lg scale-110' : 'text-gray-600 hover:bg-white/50'}
