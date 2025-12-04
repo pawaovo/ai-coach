@@ -1,24 +1,24 @@
 // 微信登录
 import Taro from '@tarojs/taro';
 import { storage } from './storage';
-import { STORAGE_KEYS } from '../constants';
+import { STORAGE_KEYS, API_CONFIG } from '../constants';
 
-export const login = async (): Promise<string> => {
+export const login = async (): Promise<{ token: string; needProfile: boolean }> => {
   try {
     const { code } = await Taro.login();
 
-    // TODO: 调用后端接口，用 code 换取 token 和 openid
+    // 调用后端接口，用 code 换取 token 和 openid
     const res = await Taro.request({
-      url: '/api/auth/login',
+      url: `${API_CONFIG.baseURL}/auth/login`,
       method: 'POST',
       data: { code }
     });
 
-    const { token, userId } = res.data.data;
+    const { token, userId, needProfile } = res.data.data;
     storage.set(STORAGE_KEYS.TOKEN, token);
     storage.set(STORAGE_KEYS.USER_ID, userId);
 
-    return token;
+    return { token, needProfile };
   } catch (error) {
     console.error('Login error:', error);
     throw error;

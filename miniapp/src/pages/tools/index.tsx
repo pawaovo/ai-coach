@@ -10,25 +10,16 @@ import './index.scss';
 const ToolsPage = () => {
   const handleToolClick = async (tool: typeof BUSINESS_TOOLS[0]) => {
     try {
-      // 创建新会话
-      const session = await api.createSession(tool.id);
-
-      // 保存会话 ID
-      storage.set(STORAGE_KEYS.LAST_SESSION, session.id);
+      // 标记选中的工具
+      storage.set('selected_tool', tool.id);
+      storage.remove(STORAGE_KEYS.LAST_SESSION);
 
       // 跳转到对话页
       Taro.switchTab({
-        url: '/pages/index/index',
-        success: () => {
-          Taro.showToast({
-            title: `开始 ${tool.name}`,
-            icon: 'success',
-            duration: 2000
-          });
-        }
+        url: '/pages/index/index'
       });
     } catch (error) {
-      console.error('创建会话失败:', error);
+      console.error('跳转失败:', error);
       Taro.showToast({
         title: '启动失败，请重试',
         icon: 'error'

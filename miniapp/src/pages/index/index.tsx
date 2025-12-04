@@ -4,7 +4,7 @@ import Taro from '@tarojs/taro';
 import React, { useState, useEffect } from 'react';
 import websocket from '../../services/websocket';
 import api from '../../services/api';
-import { checkDailyQuota, incrementUsage } from '../../utils/usage';
+import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
 import { storage } from '../../utils/storage';
 import { COACH_PERSONA, STORAGE_KEYS } from '../../constants';
 import './index.scss';
@@ -22,12 +22,15 @@ const ChatPage = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [quotaRemaining, setQuotaRemaining] = useState(10);
+  const [quotaTotal, setQuotaTotal] = useState(10);
 
   // 初始化
   useEffect(() => {
     initChat();
     return () => websocket.close();
   }, []);
+
 
   const initChat = async () => {
     // 显示欢迎语
@@ -38,6 +41,19 @@ const ChatPage = () => {
       timestamp: new Date()
     }]);
 
+    // 等待登录完成后再连接 WebSocket
+    const maxRetries = 10;
+    let retries = 0;
+    while (retries < maxRetries) {
+      const userId = storage.get(STORAGE_KEYS.USER_ID);
+      if (userId) break;
+      await new Promise(resolve => setTimeout(resolve, 300));
+      retries++;
+    }
+
+    // 加载配额信息
+    await loadQuotaInfo();
+
     // 连接 WebSocket
     try {
       await websocket.connect();
@@ -47,13 +63,21 @@ const ChatPage = () => {
     }
 
     // 恢复最近会话
-    try {
-      const lastSessionId = storage.get<string>(STORAGE_KEYS.LAST_SESSION);
-      if (lastSessionId) {
+    const lastSessionId = storage.get<string>(STORAGE_KEYS.LAST_SESSION);
+    if (lastSessionId) {
+      try {
         await loadSession(lastSessionId);
+      } catch (error) {
+        console.error('加载会话失败:', error);
       }
-    } catch (error) {
-      console.error('加载会话失败:', error);
+    }
+  };
+
+  const loadQuotaInfo = async () => {
+    const usageInfo = await getUsageInfo();
+    if (usageInfo) {
+      setQuotaRemaining(usageInfo.remaining);
+      setQuotaTotal(usageInfo.total);
     }
   };
 
@@ -63,15 +87,17 @@ const ChatPage = () => {
     };
 
     websocket.onDone = (sid: string) => {
-      if (streamingText) {
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: streamingText,
-          timestamp: new Date()
-        }]);
-      }
-      setStreamingText('');
+      setStreamingText(current => {
+        if (current) {
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: current,
+            timestamp: new Date()
+          }]);
+        }
+        return '';
+      });
       setIsStreaming(false);
     };
 
@@ -123,6 +149,8 @@ const ChatPage = () => {
     try {
       websocket.sendMessage(inputValue, 'free_chat', sessionId || undefined);
       await incrementUsage();
+      // 更新配额显示
+      await loadQuotaInfo();
     } catch (error) {
       console.error('发送消息失败:', error);
       Taro.showToast({ title: '发送失败', icon: 'error' });
@@ -145,7 +173,7 @@ const ChatPage = () => {
     <View className="chat-page">
       <View className="header">
         <Text className="history-icon" onClick={() => Taro.showToast({ title: '历史对话功能开发中', icon: 'none' })}>☰</Text>
-        <Text className="quota-text">10/1</Text>
+        <Text className="quota-text">{quotaRemaining}/{quotaTotal}</Text>
         <View className="new-icon" onClick={handleNewSession}>
           <View className="plus-h" />
           <View className="plus-v" />
@@ -158,7 +186,7 @@ const ChatPage = () => {
             <View className={`message ${msg.role}`}>
               {msg.role === 'assistant' && <View className="msg-avatar" />}
               <View className="msg-bubble">
-                <Text className="msg-content">{msg.content}</Text>
+                <Text className="msg-content" userSelect>{msg.content}</Text>
               </View>
             </View>
           </View>
@@ -169,7 +197,7 @@ const ChatPage = () => {
             <View className="message assistant">
               <View className="msg-avatar" />
               <View className="msg-bubble">
-                <Text className="msg-content">{streamingText}</Text>
+                <Text className="msg-content" userSelect>{streamingText}</Text>
                 <Text className="cursor">|</Text>
               </View>
             </View>

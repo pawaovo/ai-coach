@@ -56,7 +56,7 @@ class API {
   }
 
   // 检查使用次数
-  async checkUsage(): Promise<{ remaining: number; total: number }> {
+  async checkUsage(): Promise<{ remaining: number; total: number; daily_remaining: number; purchased_remaining: number }> {
     return this.request({
       url: '/usage/check',
       method: 'GET'

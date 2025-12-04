@@ -4,7 +4,7 @@ load_dotenv('../.env')
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth, chat, usage
+from routes import auth, chat, usage, admin
 from websocket import chat_handler
 
 app = FastAPI(title="AI Coach API", version="1.0.0")
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.include_router(usage.router, prefix="/api/usage", tags=["usage"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 # WebSocket
 app.add_websocket_route("/ws/chat", chat_handler.websocket_endpoint)

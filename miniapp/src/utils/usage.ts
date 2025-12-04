@@ -3,15 +3,22 @@ import Taro from '@tarojs/taro';
 import api from '../services/api';
 import { DAILY_FREE_QUOTA } from '../constants';
 
+export interface UsageInfo {
+  remaining: number;
+  total: number;
+  daily_remaining: number;
+  purchased_remaining: number;
+}
+
 export const checkDailyQuota = async (): Promise<boolean> => {
   try {
-    const { remaining } = await api.checkUsage();
+    const usageInfo = await api.checkUsage();
 
-    if (remaining <= 0) {
+    if (usageInfo.remaining <= 0) {
       Taro.showModal({
-        title: '今日体验次数已用尽',
-        content: `每日免费 ${DAILY_FREE_QUOTA} 次对话已用完。\n\n升级为无限次服务或联系我们了解更多。`,
-        confirmText: '了解更多',
+        title: '使用次数已用尽',
+        content: `您的使用次数已用完。\n\n请联系客服购买更多次数。`,
+        confirmText: '联系客服',
         cancelText: '取消',
         success: (res) => {
           if (res.confirm) {
@@ -26,6 +33,15 @@ export const checkDailyQuota = async (): Promise<boolean> => {
   } catch (error) {
     console.error('检查使用次数失败:', error);
     return true; // 失败时允许继续使用
+  }
+};
+
+export const getUsageInfo = async (): Promise<UsageInfo | null> => {
+  try {
+    return await api.checkUsage();
+  } catch (error) {
+    console.error('获取使用次数失败:', error);
+    return null;
   }
 };
 

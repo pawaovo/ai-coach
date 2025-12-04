@@ -15,38 +15,32 @@ class WebSocketService {
   onError?: (error: string) => void;
   onSession?: (sessionId: string) => void;
 
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.socket || this.isConnecting) {
-        resolve();
-        return;
-      }
+  async connect(): Promise<void> {
+    if (this.socket || this.isConnecting) {
+      return;
+    }
 
-      const userId = getUserId();
-      if (!userId) {
-        reject(new Error('未登录'));
-        return;
-      }
+    const userId = getUserId();
+    if (!userId) {
+      throw new Error('未登录');
+    }
 
-      this.isConnecting = true;
+    this.isConnecting = true;
 
-      this.socket = Taro.connectSocket({
-        url: `${API_CONFIG.wsURL}/chat?user_id=${userId}`,
-        success: () => console.log('WebSocket 连接中...'),
-        fail: (err) => {
-          this.isConnecting = false;
-          reject(err);
-        }
+    try {
+      await Taro.connectSocket({
+        url: `${API_CONFIG.wsURL}/chat?user_id=${userId}`
       });
 
-      this.socket.onOpen(() => {
+      this.socket = {} as Taro.SocketTask;
+
+      Taro.onSocketOpen(() => {
         console.log('WebSocket 已连接');
         this.isConnecting = false;
         this.startHeartbeat();
-        resolve();
       });
 
-      this.socket.onMessage((res) => {
+      Taro.onSocketMessage((res) => {
         try {
           const data: WSMessage = JSON.parse(res.data as string);
 
@@ -64,18 +58,21 @@ class WebSocketService {
         }
       });
 
-      this.socket.onClose(() => {
+      Taro.onSocketClose(() => {
         console.log('WebSocket 已关闭');
         this.stopHeartbeat();
         this.socket = null;
         this.scheduleReconnect();
       });
 
-      this.socket.onError((err) => {
+      Taro.onSocketError((err) => {
         console.error('WebSocket 错误:', err);
-        this.onError?.('连接失败，请检查网络');
+        this.onError?.('连接失败');
       });
-    });
+    } catch (error) {
+      this.isConnecting = false;
+      throw error;
+    }
   }
 
   sendMessage(message: string, toolType: string, sessionId?: string): void {
@@ -83,7 +80,7 @@ class WebSocketService {
       throw new Error('WebSocket 未连接');
     }
 
-    this.socket.send({
+    Taro.sendSocketMessage({
       data: JSON.stringify({
         message,
         tool_type: toolType,
@@ -94,7 +91,9 @@ class WebSocketService {
 
   private startHeartbeat(): void {
     this.heartbeatTimer = setInterval(() => {
-      this.socket?.send({ data: JSON.stringify({ type: 'ping' }) });
+      if (this.socket) {
+        Taro.sendSocketMessage({ data: JSON.stringify({ type: 'ping' }) });
+      }
     }, 30000);
   }
 
@@ -121,8 +120,10 @@ class WebSocketService {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.socket?.close({});
-    this.socket = null;
+    if (this.socket) {
+      Taro.closeSocket({});
+      this.socket = null;
+    }
   }
 }
 

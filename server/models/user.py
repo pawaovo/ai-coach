@@ -10,8 +10,10 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     openid = Column(String(100), unique=True, nullable=False)
+    phone = Column(String(20))
     nickname = Column(String(100))
     avatar_url = Column(String)
     daily_quota = Column(Integer, default=10)
+    purchased_quota = Column(Integer, default=0)
     is_premium = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
