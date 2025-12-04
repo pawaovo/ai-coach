@@ -1,0 +1,262 @@
+// src/pages/index/index.scss
+@import '../../styles/theme.scss';
+
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $background;
+
+  // ========== Header ==========
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 32rpx 40rpx;
+    background: $card;
+    border-bottom: 1rpx solid $border;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    .history-icon {
+      font-size: 48rpx;
+      color: #c96442;
+      cursor: pointer;
+      transition: opacity 0.2s;
+
+      &:active {
+        opacity: 0.6;
+      }
+    }
+
+    .new-icon {
+      width: 48rpx;
+      height: 48rpx;
+      position: relative;
+      cursor: pointer;
+      transition: opacity 0.2s;
+
+      &:active {
+        opacity: 0.6;
+      }
+
+      .plus-h {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 32rpx;
+        height: 4rpx;
+        background: #c96442;
+      }
+
+      .plus-v {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 4rpx;
+        height: 32rpx;
+        background: #c96442;
+      }
+    }
+
+    .quota-text {
+      font-size: $font-2xl;
+      font-weight: 700;
+      color: $foreground;
+    }
+  }
+
+  // ========== 消息列表 ==========
+  .message-list {
+    flex: 1;
+    padding: 20rpx;
+    overflow-y: auto;
+
+    .message-wrapper {
+      margin-bottom: 20rpx;
+
+      .message {
+        display: flex;
+        gap: 12rpx;
+
+        &.user {
+          flex-direction: row-reverse;
+          padding-right: 48rpx;
+
+          .msg-bubble {
+            background: $primary;
+            color: $primary-foreground;
+            border-radius: 20rpx 20rpx 4rpx 20rpx;
+            box-shadow: 0 2rpx 8rpx rgba(201, 100, 66, 0.15);
+          }
+        }
+
+        &.assistant {
+          .msg-bubble {
+            background: $card;
+            color: $card-foreground;
+            border: 1rpx solid $border;
+            border-radius: 20rpx 20rpx 20rpx 4rpx;
+            box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+          }
+        }
+
+        .msg-avatar {
+          width: 36rpx;
+          height: 36rpx;
+          border-radius: 50%;
+          background: $primary;
+          flex-shrink: 0;
+        }
+
+        .msg-bubble {
+          max-width: 70%;
+          padding: 16rpx 20rpx;
+
+          &.thinking {
+            display: flex;
+            gap: 6rpx;
+            padding: 16rpx 20rpx;
+
+            .dot {
+              width: 8rpx;
+              height: 8rpx;
+              border-radius: 50%;
+              background: $muted-foreground;
+              animation: thinking 1.4s infinite;
+
+              &:nth-child(2) {
+                animation-delay: 0.2s;
+              }
+
+              &:nth-child(3) {
+                animation-delay: 0.4s;
+              }
+            }
+          }
+
+          .msg-content {
+            font-size: $font-base;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+
+          .cursor {
+            display: inline-block;
+            margin-left: 2rpx;
+            animation: blink 1s infinite;
+          }
+        }
+      }
+    }
+  }
+
+  // ========== 输入框 ==========
+  .input-area {
+    padding: 20rpx;
+    background: $card;
+    border-top: 1rpx solid $border;
+
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      background: $input;
+      border: 1rpx solid $border;
+      border-radius: 24rpx;
+      padding: 8rpx 8rpx 8rpx 20rpx;
+      transition: all 0.2s;
+
+      &:focus-within {
+        border-color: $ring;
+        box-shadow: 0 0 0 3rpx rgba(201, 100, 66, 0.1);
+      }
+
+      .input {
+        flex: 1;
+        padding: 8rpx 12rpx;
+        background: transparent;
+        border: none;
+        font-size: $font-base;
+        color: $foreground;
+      }
+
+      .send-btn {
+        flex-shrink: 0;
+        width: 64rpx;
+        height: 64rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: $muted;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s;
+        opacity: 0.5;
+
+        &.active {
+          background: #c96442;
+          opacity: 1;
+          box-shadow: 0 2rpx 8rpx rgba(201, 100, 66, 0.25);
+
+          .arrow-icon {
+            border-bottom-color: #ffffff;
+
+            &::after {
+              background: #ffffff;
+            }
+          }
+        }
+
+        &:active.active {
+          transform: scale(0.92);
+        }
+
+        .arrow-icon {
+          width: 0;
+          height: 0;
+          border-left: 10rpx solid transparent;
+          border-right: 10rpx solid transparent;
+          border-bottom: 12rpx solid $muted-foreground;
+          position: relative;
+          margin-bottom: 8rpx;
+
+          &::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 10rpx;
+            transform: translateX(-50%);
+            width: 4rpx;
+            height: 14rpx;
+            background: $muted-foreground;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ========== 动画 ==========
+@keyframes thinking {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-8rpx);
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}

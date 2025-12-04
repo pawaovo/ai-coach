@@ -1,0 +1,95 @@
+// src/pages/tools/index.scss
+@import '../../styles/theme.scss';
+
+.tools-page {
+  min-height: 100vh;
+  background: $background;
+  padding: 20rpx;
+
+  // ========== Header ==========
+  .header {
+    text-align: center;
+    margin-bottom: 40rpx;
+    padding: 20rpx 0;
+
+    .title {
+      font-size: $font-2xl;
+      font-weight: 700;
+      color: $foreground;
+    }
+  }
+
+  // ========== 工具列表 ==========
+  .tools-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20rpx;
+
+    .tool-card {
+      display: flex;
+      align-items: center;
+      gap: 24rpx;
+      background: $card;
+      border: 1rpx solid $border;
+      border-radius: 20rpx;
+      padding: 28rpx 32rpx;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+      &:active {
+        transform: scale(0.98);
+        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+      }
+
+      .tool-icon {
+        width: 80rpx;
+        height: 80rpx;
+        flex-shrink: 0;
+        background: $primary;
+        border-radius: 16rpx;
+        @include flex-center;
+        box-shadow: 0 4rpx 12rpx rgba(201, 100, 66, 0.2);
+
+        .icon-text {
+          font-size: $font-2xl;
+          font-weight: 700;
+          color: $primary-foreground;
+        }
+      }
+
+      .tool-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8rpx;
+
+        .tool-header {
+          display: flex;
+          align-items: center;
+          gap: 12rpx;
+
+          .tool-name {
+            font-size: $font-lg;
+            font-weight: 600;
+            color: $foreground;
+          }
+
+          .tool-tag {
+            padding: 6rpx 12rpx;
+            background: $secondary;
+            border-radius: 8rpx;
+            font-size: $font-xs;
+            color: $secondary-foreground;
+          }
+        }
+
+        .tool-desc {
+          font-size: $font-sm;
+          color: $muted-foreground;
+          line-height: 1.5;
+        }
+      }
+    }
+  }
+}

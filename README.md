@@ -1,63 +1,52 @@
-<div align="center">
+# AI 高管教练 - 微信小程序
 
-# 🫧 Famlée
+**企业高管的 AI 教练助手**
 
-**面向大学生的 AI 心理健康支持平台**
-
-*让情绪自由流动，在这里融化所有的压力与不安*
-
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite)](https://vitejs.dev/)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase)](https://supabase.com/)
-[![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google)](https://ai.google.dev/)
-
-</div>
+[![Taro](https://img.shields.io/badge/Taro-4.1.9-blue)](https://taro.jd.com/)
+[![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18.0-336791?logo=postgresql)](https://www.postgresql.org/)
 
 ---
 
 ## 📖 项目简介
 
-**Famlée** 是一款专为大学生设计的心理健康支持 Web 应用。在快节奏的校园生活中，学业压力、人际关系、就业焦虑等问题常常困扰着年轻人。Famlée 提供了一个安全、私密的空间，让用户可以随时随地与 AI 心理咨询师对话，记录情绪变化，参与校园心理活动。
+**AI 高管教练**是一款面向企业高管的微信小程序，通过引导式对话帮助高管理清思路、做出更好的决策。基于 Taro 3 + React 框架开发，集成火山引擎豆包 AI 模型，提供专业的高管教练服务。
 
-> 🎯 **目标用户**: 北京邮电大学及其他高校学生
-> 🏆 **项目定位**: 校园心理健康辅助工具，非专业医疗替代品
+> 🎯 **目标用户**: 企业高管、创业者、管理者
+> 🏆 **核心价值**: 引导式对话，而非直接给出答案
 
 ---
 
 ## ✨ 核心特色
 
-### 🤖 三种 AI 治疗人格
+### 🤖 AI 高管教练
 
-Famlée 提供三种风格迥异的 AI 咨询师，满足不同用户的情感需求：
+- **引导式对话**: 通过苏格拉底式提问引导思考
+- **专业方法**: 基于高管教练理论和商业实践
+- **历史上下文**: 保持对话连贯性（最近 20 条消息）
+- **流式响应**: WebSocket 实时流式输出，自然流畅
 
-| 人格 | 名称 | 治疗方法 | 适用场景 |
-|------|------|----------|----------|
-| 🫧 **治愈系** | Melty (小融) | ACT 接纳承诺疗法 | 需要温暖陪伴、情绪宣泄 |
-| 🧠 **理性系** | Logic (罗极) | CBT 认知行为疗法 | 需要理性分析、思维重构 |
-| 🎭 **趣味系** | Spark (火花) | 幽默疗法 + MBTI | 需要轻松氛围、解压发疯 |
+### 🛠️ 商业工具
 
-### 🎨 情绪感知背景
+| 工具 | 说明 | 适用场景 |
+|------|------|----------|
+| **SWOT 分析** | 优势劣势分析 | 战略规划 |
+| **SMART 目标** | 设定可衡量目标 | 目标管理 |
+| **决策矩阵** | 理性权衡选项 | 决策支持 |
+| **5Why 分析** | 深挖问题根因 | 问题分析 |
 
-应用背景会根据用户的情绪状态动态变化，营造沉浸式的情感体验：
+### 📊 使用配额管理
 
-- 😊 **开心**: 温暖的金色与粉色渐变
-- 😰 **焦虑**: 沉稳的深蓝与灰蓝
-- 😢 **难过**: 柔和的薰衣草与灰色
-- 😠 **愤怒**: 热烈的红色与黄色
-- 😐 **平静**: 舒适的奶黄与淡紫
+- 每日免费 10 次对话
+- 实时配额检查
+- 数据库持久化
 
-### 📝 心情日记系统
+### 🔐 微信登录
 
-- 支持文字、图片、语音多种记录方式
-- AI 自动生成日记摘要
-- Mood 日历可视化情绪变化趋势
-- 月度情绪分析与个性化建议
-
-### 🏫 校园心理资源
-
-- **校园布告栏**: 心理讲座、团辅活动、艺术疗愈等校园活动信息
-- **心语瀑布**: 匿名吐槽墙，释放压力的安全空间
+- 微信小程序原生登录
+- JWT Token 认证
+- 用户数据隔离
 
 ---
 
@@ -65,25 +54,37 @@ Famlée 提供三种风格迥异的 AI 咨询师，满足不同用户的情感�
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Frontend                              │
-│  React 19 + TypeScript + Vite + Tailwind CSS                │
+│                    微信小程序前端                              │
+│         Taro 3 + React 18 + TypeScript + SCSS                │
 └─────────────────────────────────────────────────────────────┘
                               │
+                    ┌─────────┴─────────┐
+                    │                   │
+                    ▼                   ▼
+┌──────────────────────────┐  ┌──────────────────────────┐
+│      HTTP API            │  │      WebSocket           │
+│  - 微信登录              │  │  - 流式 AI 对话          │
+│  - 会话管理              │  │  - 实时消息推送          │
+│  - 使用次数              │  │  - 自动重连              │
+└──────────────────────────┘  └──────────────────────────┘
+                    │                   │
+                    └─────────┬─────────┘
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     Supabase Backend                         │
+│                    FastAPI 后端服务                           │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   PostgreSQL    │  │  Edge Functions │  │   Storage   │ │
-│  │  - journals     │  │  - gemini-chat  │  │  - images   │ │
-│  │  - chat_sessions│  │    (流式 AI)    │  │  - audio    │ │
-│  │  - chat_messages│  └─────────────────┘  └─────────────┘ │
+│  │   PostgreSQL    │  │  WebSocket      │  │   JWT Auth  │ │
+│  │  - users        │  │  - chat_handler │  │  - 微信登录 │ │
+│  │  - chat_sessions│  │  - 流式响应     │  │  - Token    │ │
+│  │  - chat_messages│  │  - 错误重试     │  │             │ │
+│  │  - usage_logs   │  └─────────────────┘  └─────────────┘ │
 │  └─────────────────┘                                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Google Gemini API                         │
-│                   Gemini 2.5 Flash Model                     │
+│                    火山引擎 API                               │
+│                 doubao-seed-1-6-lite-251015                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -91,55 +92,34 @@ Famlée 提供三种风格迥异的 AI 咨询师，满足不同用户的情感�
 
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| **前端框架** | React 19 | 最新版本，支持并发特性 |
-| **类型系统** | TypeScript 5.8 | 强类型保障代码质量 |
-| **构建工具** | Vite 6.2 | 极速开发体验 |
-| **样式方案** | Tailwind CSS 3.4 | 原子化 CSS，快速开发 |
-| **后端服务** | Supabase | PostgreSQL + Auth + Storage + Edge Functions |
-| **AI 模型** | Gemini 2.5 Flash | Google 最新多模态模型 |
-| **图标库** | Lucide React | 轻量级图标组件 |
+| **前端框架** | Taro 3 + React 18 | 跨平台小程序框架 |
+| **类型系统** | TypeScript | 强类型保障 |
+| **样式方案** | SCSS + Tweakcn | 主题化设计 |
+| **后端框架** | FastAPI (Python) | 高性能异步框架 |
+| **数据库** | PostgreSQL 18.0 | 关系型数据库 |
+| **AI 模型** | 火山引擎豆包 | 流式对话模型 |
+| **认证** | JWT + 微信登录 | 安全认证 |
 
 ---
 
 ## 📱 功能模块
 
-### 1. 首页 (Home)
-- 心情快速选择（5 种情绪状态）
-- 日记创建入口
-- AI 人格切换菜单
+### 1. AI 教练对话 ✅
+- 流式文字对话
+- 会话管理（新建、切换、历史）
+- 消息持久化
+- 历史上下文（20 条）
+- 错误重试（最多 2 次）
 
-### 2. AI 聊天 (Chat) ✅ 已实现
-- **流式文字对话**: 实时显示 AI 回复，逐字输出
-- **会话管理**: 下拉菜单切换历史会话，新建对话
-- **消息持久化**: 所有对话自动存入数据库
-- **快捷工具**:
-  - ☁️ 正念呼吸引导
-  - 🧠 CBT 认知重构
-  - 🔮 MBTI 快速测试
+### 2. 商业工具 ✅
+- SWOT 分析
+- SMART 目标
+- 决策矩阵
+- 5Why 分析
 
-### 3. 语音模式 (Voice) 🚧 开发中
-- **UI 已完成**: 棉花糖球体动画、录音状态反馈
-- **待实现**: 语音转文字、AI 对话、语音回复
-
-### 4. Mood 日历 (Calendar)
-- 月度情绪日历视图
-- 情绪稳定性评分
-- 情绪构成分析图
-- AI 个性化建议
-
-### 5. 校园布告栏 (Campus)
-- 心理活动列表
-- 活动报名功能
-- 专属推荐（基于情绪分析）
-
-### 6. 心语瀑布 (Waterfall)
-- 匿名发布心事
-- 分类浏览（爱情、学业、就业、吐槽等）
-- 点赞互动
-
-### 7. 个人中心 (Profile)
-- 用户设置
-- 数据统计
+### 3. 连接我们 ✅
+- 联系方式
+- 关于我们
 
 ---
 
@@ -148,186 +128,195 @@ Famlée 提供三种风格迥异的 AI 咨询师，满足不同用户的情感�
 ### 环境要求
 
 - Node.js 18+
-- npm 或 yarn
-- Supabase 账号
-- Google AI Studio API Key
+- Python 3.9+
+- PostgreSQL 18.0+
+- 微信开发者工具
 
-### 安装步骤
+### 前端安装
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/your-username/famlee.git
-cd famlee
+# 1. 进入小程序目录
+cd miniapp
 
 # 2. 安装依赖
-npm install
+npm install --legacy-peer-deps
+
+# 3. 编译小程序
+npm run build:weapp
+
+# 4. 开发模式（监听文件变化）
+npm run dev:weapp
+```
+
+### 后端安装
+
+```bash
+# 1. 进入后端目录
+cd server
+
+# 2. 安装 Python 依赖
+pip install fastapi uvicorn sqlalchemy psycopg2-binary httpx pyjwt python-dotenv
 
 # 3. 配置环境变量
-cp .env.example .env.local
-# 编辑 .env.local，填入你的 API Keys
+# 编辑 ../.env 文件
 
-# 4. 启动开发服务器
-npm run dev
+# 4. 启动后端服务
+uvicorn app:app --reload
 ```
 
 ### 环境变量配置
 
-创建 `.env.local` 文件：
+创建 `.env` 文件：
 
 ```env
-# Gemini API Key (从 Google AI Studio 获取)
-VITE_GEMINI_API_KEY=your_gemini_api_key
+# 数据库配置
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/ai_coach_db
 
-# Supabase 配置 (从 Supabase Dashboard 获取)
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key
+# 火山引擎 API
+OPENAI_API_KEY=your_volcengine_api_key
+OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+OPENAI_MODEL=doubao-seed-1-6-lite-251015
+
+# JWT
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRES_IN=7d
+
+# 微信小程序
+WECHAT_APP_ID=your_wechat_appid
+WECHAT_APP_SECRET=your_wechat_secret
 ```
 
-### Supabase 设置
+### 数据库设置
 
-1. 创建 Supabase 项目
-2. 运行数据库迁移脚本：`supabase/migrations/001_initial_schema.sql`
-3. 创建 Storage Buckets：`journal-images`, `journal-audio`
-4. 设置 Edge Function Secret：`GEMINI_API_KEY`
-5. 部署 Edge Function：`npm run supabase:deploy`
+```bash
+# 1. 创建数据库
+createdb ai_coach_db
+
+# 2. 运行迁移脚本
+psql -U postgres -d ai_coach_db -f database/migrations/001_init.sql
+```
 
 ---
 
 ## 📂 项目结构
 
 ```
-famlée/
-├── src/
-│   ├── index.tsx              # 应用入口
-│   ├── App.tsx                # 根组件
-│   ├── types.ts               # 类型定义
-│   ├── constants.ts           # 常量配置
-│   ├── components/            # 通用组件
-│   │   ├── FluidBackground.tsx
-│   │   ├── JournalModal.tsx
-│   │   └── MascotMenu.tsx
-│   ├── pages/                 # 页面组件
-│   │   ├── Home.tsx
-│   │   ├── Chat.tsx
-│   │   ├── Calendar.tsx
-│   │   ├── Campus.tsx
-│   │   ├── Waterfall.tsx
-│   │   └── Profile.tsx
-│   ├── lib/                   # 工具库
-│   │   └── supabaseClient.ts
-│   └── services/              # 服务层
-│       ├── geminiService.ts
-│       └── supabaseService.ts
-├── supabase/
-│   ├── config.toml
-│   ├── migrations/
-│   └── functions/
-│       └── gemini-chat/
-├── docs/                      # 项目文档
-├── .env.example               # 环境变量模板
-└── package.json
+ai-coach/
+├── miniapp/                    # 小程序前端
+│   ├── src/
+│   │   ├── app.tsx            # 应用入口
+│   │   ├── app.config.ts      # 小程序配置
+│   │   ├── constants/         # 常量配置
+│   │   ├── pages/             # 页面
+│   │   │   ├── index/         # AI 教练对话
+│   │   │   ├── tools/         # 商业工具
+│   │   │   └── connect/       # 连接我们
+│   │   ├── services/          # 服务层
+│   │   │   ├── api.ts         # HTTP API
+│   │   │   └── websocket.ts   # WebSocket
+│   │   ├── utils/             # 工具函数
+│   │   └── styles/            # 样式
+│   │       └── theme.scss     # Tweakcn 主题
+│   └── dist/                  # 编译输出
+├── server/                     # 后端服务
+│   ├── app.py                 # FastAPI 主应用
+│   ├── routes/                # 路由
+│   │   ├── auth.py            # 微信登录
+│   │   ├── chat.py            # 会话管理
+│   │   └── usage.py           # 使用次数
+│   ├── models/                # 数据模型
+│   │   ├── user.py
+│   │   ├── chat_session.py
+│   │   ├── chat_message.py
+│   │   └── usage_log.py
+│   ├── services/              # 服务层
+│   │   └── database.py        # 数据库连接
+│   └── websocket/             # WebSocket
+│       └── chat_handler.py    # 聊天处理器
+├── database/                   # 数据库
+│   └── migrations/
+│       └── 001_init.sql       # 初始化脚本
+├── .env                       # 环境变量
+└── README.md
 ```
 
 ---
 
 ## 🔧 开发命令
 
+### 前端
+
 ```bash
-# 开发
-npm run dev              # 启动开发服务器 (localhost:3000)
+# 开发模式
+npm run dev:weapp
 
-# 构建
-npm run build            # 构建生产版本
-npm run preview          # 预览生产构建
-
-# Supabase
-npm run supabase:login   # 登录 Supabase CLI
-npm run supabase:link    # 链接项目
-npm run supabase:deploy  # 部署 Edge Function
+# 生产构建
+npm run build:weapp
 ```
 
----
+### 后端
 
-## 🌐 部署
+```bash
+# 启动服务
+uvicorn app:app --reload
 
-### Vercel 部署（推荐）
-
-1. Fork 本项目到你的 GitHub
-2. 在 [Vercel](https://vercel.com) 导入项目
-3. 配置环境变量：
-   - `VITE_GEMINI_API_KEY`
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. 点击 Deploy
-
-### 其他平台
-
-项目为纯静态 SPA，可部署到任何支持静态托管的平台：
-- Netlify
-- Cloudflare Pages
-- GitHub Pages
+# 测试 API
+curl http://localhost:8000/health
+```
 
 ---
 
 ## 📋 开发进度
 
-### ✅ 已完成功能
+### ✅ 已完成
 
-- [x] 流式 AI 聊天（文字模式）
-- [x] 会话管理（新建、切换、历史恢复）
-- [x] 消息持久化到 Supabase
-- [x] 三种 AI 人格切换
-- [x] MBTI 速测、CBT 引导、正念呼吸工具
-- [x] Mood 日历与情绪分析
-- [x] 心情日记系统
-- [x] Edge Function 流式响应
+- [x] 小程序前端框架搭建
+- [x] 后端 API 实现
+- [x] 微信登录集成
+- [x] 流式 AI 对话
+- [x] 会话管理
+- [x] 使用次数管理
+- [x] 历史对话上下文
+- [x] 错误重试机制
+- [x] 数据库持久化
+- [x] Tweakcn 主题配置
+- [x] UI/UX 优化（简洁化设计）
+- [x] 代码清理（删除冗余文件）
 
-### 🚧 开发中：语音对话功能
+### 🚧 待完成
 
-| 阶段 | 任务 | 状态 |
-|------|------|------|
-| 1 | 音频录制优化（格式、时长、波形） | ⏳ |
-| 2 | 语音转文字（STT）集成 | ⏳ |
-| 3 | 文字转语音（TTS）- 可选 | ⏳ |
-| 4 | 完整语音对话流程 | ⏳ |
-
-**技术方案**：
-- 语音识别：Gemini Audio API / Web Speech API
-- 语音合成：Web Speech API / Google TTS
-- 录音格式：WebM (浏览器原生支持)
-
-### 📌 未来规划
-
-- [ ] 用户认证系统
-- [ ] 数据导出功能
-- [ ] 多语言支持
-- [ ] PWA 离线支持
-- [ ] 深色模式
+- [ ] SWOT/SMART 工具模态框实现
+- [ ] 微信小程序账号申请
+- [ ] 服务器部署
+- [ ] 域名配置
+- [ ] SSL 证书
+- [ ] 生产环境测试
 
 ---
 
-## ⚠️ 免责声明
+## 🌐 部署
 
-Famlée 是一款心理健康辅助工具，**不能替代专业的心理咨询或医疗服务**。
+### 后端部署
 
-- 如果您正在经历严重的心理困扰，请立即寻求专业帮助
-- 如有自残或自杀倾向，请拨打心理援助热线或前往医院就诊
-- 本应用仅供情绪记录和轻度心理支持使用
+1. 准备服务器（推荐 Ubuntu 20.04+）
+2. 安装 Python 3.9+ 和 PostgreSQL
+3. 配置环境变量
+4. 使用 Gunicorn + Nginx 部署
+5. 配置 SSL 证书
 
-**北京邮电大学心理咨询中心**: 010-6228xxxx
+### 小程序发布
+
+1. 申请微信小程序账号
+2. 配置服务器域名白名单
+3. 上传代码到微信后台
+4. 提交审核
 
 ---
 
 ## 📄 License
 
-MIT License - 详见 [LICENSE](LICENSE) 文件
+MIT License
 
 ---
 
-<div align="center">
-
-**Made with 💜 for BUPT Students**
-
-*让每一个情绪都被温柔以待*
-
-</div>
+**Made with ❤️ for Executives**
