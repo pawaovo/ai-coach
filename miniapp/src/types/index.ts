@@ -13,6 +13,7 @@ export interface ChatSession {
   userId: string;
   toolType: 'free_chat' | 'swot' | 'smart' | 'decision' | '5why';
   createdAt: string;
+  firstMessage?: string;
 }
 
 export interface ChatMessage {
@@ -40,4 +41,12 @@ export interface APIResponse<T = any> {
   code: number;
   message: string;
   data?: T;
+}
+
+// 前端页面使用的消息类型（用于本地状态管理）
+export interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
 }

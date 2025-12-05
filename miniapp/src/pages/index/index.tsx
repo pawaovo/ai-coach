@@ -7,14 +7,8 @@ import api from '../../services/api';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
 import { storage } from '../../utils/storage';
 import { COACH_PERSONA, STORAGE_KEYS } from '../../constants';
+import type { Message } from '../../types';
 import './index.scss';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
 
 const ChatPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -24,12 +18,29 @@ const ChatPage = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [quotaRemaining, setQuotaRemaining] = useState(10);
   const [quotaTotal, setQuotaTotal] = useState(10);
+  const [scrollIntoViewId, setScrollIntoViewId] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [historySessions, setHistorySessions] = useState<any[]>([]);
 
   // 初始化
   useEffect(() => {
     initChat();
     return () => websocket.close();
   }, []);
+
+  // 自动滚动到最新消息
+  useEffect(() => {
+    const lastMsgId = `msg-${messages.length - 1}`;
+    setScrollIntoViewId(lastMsgId);
+  }, [messages]);
+
+  // 流式文本更新时也触发滚动
+  useEffect(() => {
+    if (streamingText) {
+      const streamingMsgId = `msg-streaming`;
+      setScrollIntoViewId(streamingMsgId);
+    }
+  }, [streamingText]);
 
 
   const initChat = async () => {
@@ -169,18 +180,49 @@ const ChatPage = () => {
     storage.remove(STORAGE_KEYS.LAST_SESSION);
   };
 
+  const handleShowHistory = async () => {
+    try {
+      const sessions = await api.getSessions();
+      setHistorySessions(sessions);
+      setShowHistory(true);
+    } catch (error) {
+      console.error('加载历史会话失败:', error);
+      Taro.showToast({ title: '加载失败', icon: 'error' });
+    }
+  };
+
+  const handleSelectSession = async (sid: string) => {
+    setShowHistory(false);
+    await loadSession(sid);
+  };
+
+  // 按日期分组历史会话
+  const groupedSessions = historySessions.reduce((groups, session) => {
+    const date = new Date(session.createdAt);
+    const key = `${date.getMonth() + 1}月${date.getDate()}日`;
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(session);
+    return groups;
+  }, {} as Record<string, any[]>);
+
   return (
     <View className="chat-page">
-      <View className="header">
-        <Text className="history-icon" onClick={() => Taro.showToast({ title: '历史对话功能开发中', icon: 'none' })}>☰</Text>
-        <Text className="quota-text">{quotaRemaining}/{quotaTotal}</Text>
-        <View className="new-icon" onClick={handleNewSession}>
-          <View className="plus-h" />
-          <View className="plus-v" />
+      {/* 自定义导航栏 */}
+      <View className="custom-nav">
+        <View className="nav-left">
+          <Text className="history-icon" onClick={handleShowHistory}>☰</Text>
+          <View className="new-icon" onClick={handleNewSession}>
+            <View className="plus-h" />
+            <View className="plus-v" />
+          </View>
         </View>
+        <Text className="quota-text">{quotaRemaining}/{quotaTotal}</Text>
+        <View className="nav-right" />
       </View>
 
-      <ScrollView scrollY className="message-list" scrollIntoView={`msg-${messages.length}`}>
+      <ScrollView scrollY className="message-list" scrollIntoView={scrollIntoViewId} scrollWithAnimation>
         {messages.map((msg, index) => (
           <View key={msg.id} id={`msg-${index}`} className="message-wrapper">
             <View className={`message ${msg.role}`}>
@@ -193,7 +235,7 @@ const ChatPage = () => {
         ))}
 
         {isStreaming && streamingText && (
-          <View className="message-wrapper">
+          <View id="msg-streaming" className="message-wrapper">
             <View className="message assistant">
               <View className="msg-avatar" />
               <View className="msg-bubble">
@@ -205,7 +247,7 @@ const ChatPage = () => {
         )}
 
         {isStreaming && !streamingText && (
-          <View className="message-wrapper">
+          <View id="msg-thinking" className="message-wrapper">
             <View className="message assistant">
               <View className="msg-avatar" />
               <View className="msg-bubble thinking">
@@ -217,6 +259,41 @@ const ChatPage = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* 历史会话弹窗 */}
+      {showHistory && (
+        <View className="history-modal">
+          <View className="modal-mask" onClick={() => setShowHistory(false)} />
+          <View className="modal-content">
+            <View className="modal-header">
+              <Text className="modal-title">历史对话</Text>
+              <Text className="modal-close" onClick={() => setShowHistory(false)}>✕</Text>
+            </View>
+            <ScrollView scrollY className="history-list">
+              {Object.keys(groupedSessions).length === 0 ? (
+                <View className="empty-hint">
+                  <Text>暂无历史对话</Text>
+                </View>
+              ) : (
+                Object.entries(groupedSessions).map(([date, sessions]) => (
+                  <View key={date} className="history-group">
+                    <Text className="group-date">{date}</Text>
+                    {sessions.map((session) => (
+                      <View
+                        key={session.id}
+                        className="history-item"
+                        onClick={() => handleSelectSession(session.id)}
+                      >
+                        <Text className="item-text">{session.firstMessage || '新对话'}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
 
       <View className="input-area">
         <View className="input-wrapper">

@@ -9,7 +9,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: 'AI 高管教练',
+    navigationBarTitleText: '',
     navigationBarTextStyle: 'black'
   },
   tabBar: {

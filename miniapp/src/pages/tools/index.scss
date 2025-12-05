@@ -4,7 +4,17 @@
 .tools-page {
   min-height: 100vh;
   background: $background;
-  padding: 20rpx;
+  position: relative;
+
+  .page-content {
+    padding: 20rpx;
+    transition: filter 0.3s;
+
+    &.blurred {
+      filter: blur(8rpx);
+      pointer-events: none;
+    }
+  }
 
   // ========== Header ==========
   .header {
@@ -28,34 +38,15 @@
     .tool-card {
       display: flex;
       align-items: center;
-      gap: 24rpx;
-      background: $card;
-      border: 1rpx solid $border;
+      background: #E3DACC;
       border-radius: 20rpx;
       padding: 28rpx 32rpx;
       cursor: pointer;
       transition: all 0.2s;
-      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 
       &:active {
         transform: scale(0.98);
-        box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-      }
-
-      .tool-icon {
-        width: 80rpx;
-        height: 80rpx;
-        flex-shrink: 0;
-        background: $primary;
-        border-radius: 16rpx;
-        @include flex-center;
-        box-shadow: 0 4rpx 12rpx rgba(201, 100, 66, 0.2);
-
-        .icon-text {
-          font-size: $font-2xl;
-          font-weight: 700;
-          color: $primary-foreground;
-        }
+        opacity: 0.9;
       }
 
       .tool-info {
@@ -69,15 +60,18 @@
           align-items: center;
           gap: 12rpx;
 
-          .tool-name {
-            font-size: $font-lg;
+          .tool-name-styled {
+            font-size: $font-sm;
             font-weight: 600;
-            color: $foreground;
+            padding: 6rpx 14rpx;
+            background: $primary;
+            color: $primary-foreground;
+            border-radius: 8rpx;
           }
 
           .tool-tag {
             padding: 6rpx 12rpx;
-            background: $secondary;
+            background: rgba(255, 255, 255, 0.6);
             border-radius: 8rpx;
             font-size: $font-xs;
             color: $secondary-foreground;
@@ -88,6 +82,229 @@
           font-size: $font-sm;
           color: $muted-foreground;
           line-height: 1.5;
+          margin-top: 4rpx;
+        }
+      }
+    }
+  }
+
+  // ========== 2/3屏对话弹窗 ==========
+  .half-screen-chat {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+
+    .chat-mask {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4rpx);
+    }
+
+    .chat-container {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 66.67vh;
+      background: $card;
+      border-radius: 32rpx 32rpx 0 0;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s ease-out;
+
+      .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 32rpx;
+        border-bottom: 1rpx solid $border;
+
+        .chat-title {
+          font-size: $font-xl;
+          font-weight: 700;
+          color: $foreground;
+        }
+
+        .chat-close {
+          font-size: 48rpx;
+          color: $muted-foreground;
+          cursor: pointer;
+          line-height: 1;
+          transition: color 0.2s;
+
+          &:active {
+            color: $foreground;
+          }
+        }
+      }
+
+      .chat-messages {
+        flex: 1;
+        padding: 20rpx;
+        overflow-y: auto;
+
+        .message-wrapper {
+          margin-bottom: 20rpx;
+
+          .message {
+            display: flex;
+            gap: 12rpx;
+
+            &.user {
+              flex-direction: row-reverse;
+              padding-right: 48rpx;
+
+              .msg-bubble {
+                background: $primary;
+                color: $primary-foreground;
+                border-radius: 20rpx 20rpx 4rpx 20rpx;
+                box-shadow: 0 2rpx 8rpx rgba(201, 100, 66, 0.15);
+              }
+            }
+
+            &.assistant {
+              .msg-bubble {
+                background: $card;
+                color: $card-foreground;
+                border: 1rpx solid $border;
+                border-radius: 20rpx 20rpx 20rpx 4rpx;
+                box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+              }
+            }
+
+            .msg-avatar {
+              width: 36rpx;
+              height: 36rpx;
+              border-radius: 50%;
+              background: $primary;
+              flex-shrink: 0;
+            }
+
+            .msg-bubble {
+              max-width: 70%;
+              padding: 16rpx 20rpx;
+
+              &.thinking {
+                display: flex;
+                gap: 6rpx;
+                padding: 16rpx 20rpx;
+
+                .dot {
+                  width: 8rpx;
+                  height: 8rpx;
+                  border-radius: 50%;
+                  background: $muted-foreground;
+                  animation: thinking 1.4s infinite;
+
+                  &:nth-child(2) {
+                    animation-delay: 0.2s;
+                  }
+
+                  &:nth-child(3) {
+                    animation-delay: 0.4s;
+                  }
+                }
+              }
+
+              .msg-content {
+                font-size: $font-base;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-break: break-word;
+              }
+
+              .cursor {
+                display: inline-block;
+                margin-left: 2rpx;
+                animation: blink 1s infinite;
+              }
+            }
+          }
+        }
+      }
+
+      .chat-input-area {
+        padding: 12rpx 20rpx;
+        background: $card;
+        border-top: 1rpx solid $border;
+
+        .input-wrapper {
+          display: flex;
+          align-items: center;
+          background: $background;
+          border-radius: 52rpx;
+          padding: 16rpx 16rpx 16rpx 32rpx;
+          transition: all 0.2s;
+
+          .input {
+            flex: 1;
+            padding: 16rpx 16rpx;
+            background: transparent;
+            border: none;
+            font-size: $font-base;
+            color: $foreground;
+            min-height: 56rpx;
+          }
+
+          .send-btn {
+            flex-shrink: 0;
+            width: 80rpx;
+            height: 80rpx;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: $muted;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.5;
+
+            &.active {
+              background: #c96442;
+              opacity: 1;
+              box-shadow: 0 2rpx 8rpx rgba(201, 100, 66, 0.25);
+
+              .arrow-icon {
+                border-bottom-color: #ffffff;
+
+                &::after {
+                  background: #ffffff;
+                }
+              }
+            }
+
+            &:active.active {
+              transform: scale(0.92);
+            }
+
+            .arrow-icon {
+              width: 0;
+              height: 0;
+              border-left: 10rpx solid transparent;
+              border-right: 10rpx solid transparent;
+              border-bottom: 12rpx solid $muted-foreground;
+              position: relative;
+              margin-bottom: 8rpx;
+
+              &::after {
+                content: '';
+                position: absolute;
+                left: 50%;
+                top: 10rpx;
+                transform: translateX(-50%);
+                width: 4rpx;
+                height: 14rpx;
+                background: $muted-foreground;
+              }
+            }
+          }
         }
       }
     }

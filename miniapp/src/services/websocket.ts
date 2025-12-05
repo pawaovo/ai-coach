@@ -81,11 +81,11 @@ class WebSocketService {
     }
 
     Taro.sendSocketMessage({
-      data: JSON.stringify({
-        message,
-        tool_type: toolType,
-        session_id: sessionId
-      })
+      data: JSON.stringify({ message, toolType, sessionId }),
+      fail: (err) => {
+        console.error('WebSocket 消息发送失败:', err);
+        this.onError?.('消息发送失败');
+      }
     });
   }
 

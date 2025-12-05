@@ -1,6 +1,6 @@
 // 用户授权页面
 import React, { useState } from 'react'
-import { View, Button, Text, Input, Image } from '@tarojs/components'
+import { View, Button, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { API_CONFIG } from '../../constants'
 import { getToken } from '../../utils/auth'
@@ -10,79 +10,46 @@ export default function Authorize() {
   const [loading, setLoading] = useState(false)
   const [nickname, setNickname] = useState('')
 
-  // 获取用户昵称
   const handleNicknameInput = (e) => {
-    const value = e.detail.value
-    setNickname(value)
-    console.log('输入昵称:', value)
+    setNickname(e.detail.value)
   }
 
-  // 获取手机号
   const handleGetPhoneNumber = async (e) => {
-    console.log('getPhoneNumber event:', e.detail)
-
     if (e.detail.errMsg !== 'getPhoneNumber:ok') {
-      Taro.showToast({
-        title: '获取手机号失败',
-        icon: 'none'
-      })
+      Taro.showToast({ title: '获取手机号失败', icon: 'none' })
       return
     }
 
-    const { code } = e.detail
-
-    // 验证必填信息
     if (!nickname.trim()) {
-      Taro.showToast({
-        title: '请输入昵称',
-        icon: 'none'
-      })
+      Taro.showToast({ title: '请输入昵称', icon: 'none' })
       return
     }
 
     setLoading(true)
 
     try {
-      const token = getToken()
-      console.log('Token:', token)
-      console.log('发送数据:', {
-        nickname: nickname.trim(),
-        phone_code: code
-      })
-
-      // 调用后端接口更新用户信息
       const res = await Taro.request({
         url: `${API_CONFIG.baseURL}/auth/update-profile`,
         method: 'POST',
         header: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         },
         data: {
           nickname: nickname.trim(),
-          phone_code: code
+          phone_code: e.detail.code
         }
       })
 
-      console.log('后端响应:', res.data)
-
       if (res.data.code === 0) {
-        Taro.showToast({
-          title: '授权成功',
-          icon: 'success'
-        })
-
-        // 延迟跳转到首页
+        Taro.showToast({ title: '授权成功', icon: 'success' })
         setTimeout(() => {
-          Taro.reLaunch({
-            url: '/pages/index/index'
-          })
+          Taro.reLaunch({ url: '/pages/index/index' })
         }, 1500)
       } else {
         throw new Error(res.data.message || '授权失败')
       }
     } catch (error) {
-      console.error('授权失败:', error)
       Taro.showToast({
         title: error.message || '授权失败，请重试',
         icon: 'none',

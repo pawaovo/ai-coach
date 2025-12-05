@@ -7,58 +7,68 @@
   height: 100vh;
   background: $background;
 
-  // ========== Header ==========
-  .header {
+  // ========== 自定义导航栏（与胶囊按钮对齐） ==========
+  .custom-nav {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 32rpx 40rpx;
-    background: $card;
-    border-bottom: 1rpx solid $border;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    align-items: flex-end;
+    padding: 0 32rpx 16rpx;
+    padding-right: 200rpx; // 为右侧胶囊按钮留出空间
+    // 状态栏高度约20-44px不等，胶囊按钮top约7px，高度32px
+    padding-top: 88rpx; // 状态栏高度
+    min-height: 176rpx; // 状态栏 + 导航栏
+    background: #fff;
+    box-sizing: border-box;
+    position: relative;
 
-    .history-icon {
-      font-size: 48rpx;
-      color: #c96442;
-      cursor: pointer;
-      transition: opacity 0.2s;
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 24rpx;
+      height: 64rpx;
 
-      &:active {
-        opacity: 0.6;
-      }
-    }
+      .history-icon {
+        font-size: 44rpx;
+        color: #c96442;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        line-height: 1;
 
-    .new-icon {
-      width: 48rpx;
-      height: 48rpx;
-      position: relative;
-      cursor: pointer;
-      transition: opacity 0.2s;
-
-      &:active {
-        opacity: 0.6;
+        &:active {
+          opacity: 0.6;
+        }
       }
 
-      .plus-h {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 32rpx;
-        height: 4rpx;
-        background: #c96442;
-      }
+      .new-icon {
+        width: 44rpx;
+        height: 44rpx;
+        position: relative;
+        cursor: pointer;
+        transition: opacity 0.2s;
 
-      .plus-v {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 4rpx;
-        height: 32rpx;
-        background: #c96442;
+        &:active {
+          opacity: 0.6;
+        }
+
+        .plus-h {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 28rpx;
+          height: 4rpx;
+          background: #c96442;
+        }
+
+        .plus-v {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 4rpx;
+          height: 28rpx;
+          background: #c96442;
+        }
       }
     }
 
@@ -66,6 +76,14 @@
       font-size: $font-2xl;
       font-weight: 700;
       color: $foreground;
+      position: absolute;
+      left: 50%;
+      bottom: 16rpx;
+      transform: translateX(-50%);
+    }
+
+    .nav-right {
+      display: none;
     }
   }
 
@@ -73,6 +91,7 @@
   .message-list {
     flex: 1;
     padding: 20rpx;
+    padding-bottom: 160rpx; // 为悬浮输入框留出空间
     overflow-y: auto;
 
     .message-wrapper {
@@ -155,39 +174,143 @@
     }
   }
 
-  // ========== 输入框 ==========
+  // ========== 历史会话弹窗 ==========
+  .history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+
+    .modal-mask {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 640rpx;
+      max-height: 80vh;
+      background: $card;
+      border-radius: 24rpx;
+      overflow: hidden;
+      box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 32rpx;
+        border-bottom: 1rpx solid $border;
+
+        .modal-title {
+          font-size: $font-xl;
+          font-weight: 700;
+          color: $foreground;
+        }
+
+        .modal-close {
+          font-size: 48rpx;
+          color: $muted-foreground;
+          cursor: pointer;
+          line-height: 1;
+          transition: color 0.2s;
+
+          &:active {
+            color: $foreground;
+          }
+        }
+      }
+
+      .history-list {
+        max-height: 60vh;
+        padding: 16rpx 0;
+
+        .empty-hint {
+          padding: 80rpx 32rpx;
+          text-align: center;
+          color: $muted-foreground;
+          font-size: $font-base;
+        }
+
+        .history-group {
+          margin-bottom: 24rpx;
+
+          .group-date {
+            display: block;
+            padding: 12rpx 32rpx;
+            font-size: $font-sm;
+            font-weight: 600;
+            color: $muted-foreground;
+          }
+
+          .history-item {
+            padding: 20rpx 32rpx;
+            cursor: pointer;
+            transition: background 0.2s;
+
+            &:active {
+              background: $muted;
+            }
+
+            .item-text {
+              display: block;
+              font-size: $font-base;
+              color: $foreground;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ========== 输入框（悬浮效果） ==========
   .input-area {
-    padding: 20rpx;
-    background: $card;
-    border-top: 1rpx solid $border;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12rpx 20rpx;
+    background: transparent;
 
     .input-wrapper {
       display: flex;
       align-items: center;
-      background: $input;
-      border: 1rpx solid $border;
-      border-radius: 24rpx;
-      padding: 8rpx 8rpx 8rpx 20rpx;
+      background: $card;
+      border-radius: 52rpx;
+      padding: 16rpx 16rpx 16rpx 32rpx;
       transition: all 0.2s;
+      box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.12);
 
       &:focus-within {
-        border-color: $ring;
-        box-shadow: 0 0 0 3rpx rgba(201, 100, 66, 0.1);
+        box-shadow: 0 4rpx 24rpx rgba(201, 100, 66, 0.2);
       }
 
       .input {
         flex: 1;
-        padding: 8rpx 12rpx;
+        padding: 16rpx 16rpx;
         background: transparent;
         border: none;
         font-size: $font-base;
         color: $foreground;
+        min-height: 56rpx;
       }
 
       .send-btn {
         flex-shrink: 0;
-        width: 64rpx;
-        height: 64rpx;
+        width: 80rpx;
+        height: 80rpx;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -237,26 +360,5 @@
         }
       }
     }
-  }
-}
-
-// ========== 动画 ==========
-@keyframes thinking {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.4;
-  }
-  30% {
-    transform: translateY(-8rpx);
-    opacity: 1;
-  }
-}
-
-@keyframes blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
   }
 }

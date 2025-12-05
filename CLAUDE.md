@@ -248,10 +248,14 @@ usage_logs (id, user_id, date, count, created_at)
 - 数据库持久化（用户、会话、消息、使用记录）
 - 数据库迁移工具（Python 脚本）
 - Tweakcn 主题配置（SCSS + rpx）
-- 商业工具快速选择栏（输入框上方）
-- 工具选择状态高亮与新建对话
+- 商业工具 2/3 屏对话窗口（高斯模糊背景）
 - WebSocket 流式对话修复（Taro 4 全局 API）
-- 代码清理（删除废弃文件、重复逻辑）
+- 代码质量优化：
+  - ✅ 合并重复的 CSS 动画定义（减少 30 行代码）
+  - ✅ 标准化日志记录（logger.error 替代 print）
+  - ✅ 提取重复的 TypeScript 类型定义
+  - ✅ 删除未使用的导入、状态、函数
+  - ✅ 清理调试代码（console.log/print）
 - 文档更新（README.md + CLAUDE.md）
 
 ### 🚧 待完成
@@ -293,24 +297,55 @@ A: 使用 `npm install --legacy-peer-deps` 安装依赖
 
 ## Code Quality Notes
 
-根据最新代码检查（2025-12-03），项目整体质量良好，但有以下建议：
+### ✅ 已完成优化（2025-12-05）
 
-### 高优先级
-- 实现动态用户 ID 生成（当前使用固定 `demo_user`）
-- 移除调试 console.log
+1. **合并重复的 CSS 动画定义**
+   - 从 `miniapp/src/pages/index/index.scss` 和 `miniapp/src/pages/tools/index.scss` 中删除重复的动画
+   - 将 `@keyframes thinking`、`@keyframes blink`、`@keyframes slideUp` 合并到全局主题文件 `miniapp/src/styles/theme.scss`
+   - 减少了约 30 行重复代码
 
-### 中优先级
+2. **标准化日志记录**
+   - 将 `server/websocket/chat_handler.py` 的 `print()` 改为标准的 `logger.error()`
+   - 添加了 `exc_info=True` 参数以获取完整的异常堆栈信息
+   - 使代码更符合生产环境的日志最佳实践
+
+3. **提取重复的类型定义**
+   - 从两个页面组件中删除重复的 `Message` 接口定义
+   - 将其集中到 `miniapp/src/types/index.ts` 作为共享类型
+   - 确保类型定义的单一来源（Single Source of Truth）
+
+### 🎯 代码质量状态
+
+- ✅ 无多余的调试语句（console.log/print）
+- ✅ 无空的异常处理块
+- ✅ API URL 统一配置在常量文件
+- ✅ 无重复的样式和动画定义
+- ✅ 类型定义集中管理
+- ✅ 标准化的日志记录
+
+### 📋 待优化建议
+
+#### 中优先级
 - 提取重复的 Base64 转换逻辑
-- 统一错误处理模式
 - 替换 `any` 类型为具体类型
 
-### 低优先级
+#### 低优先级
 - 优化性能（使用 useCallback, useMemo）
 - 提取魔法数字为常量
 
 ---
 
 ## UI/UX 优化记录
+
+### 2025-12-05 更新
+- ✅ 全局背景色改为 `#F0EEE6`（温暖米色）
+- ✅ 工具卡片背景色改为 `#E3DACC`
+- ✅ 工具卡片删除图标，标题加粗放大
+- ✅ 自定义导航栏与微信胶囊按钮对齐（padding-top: 88rpx, min-height: 176rpx）
+- ✅ 输入栏悬浮效果（position: fixed, bottom: 0, background: transparent）
+- ✅ 联系我们页面底部按钮固定在与输入栏相同位置
+- ✅ 联系我们页面按钮颜色改为 `#c96442`
+- ✅ 联系卡片背景色改为 `#E3DACC`
 
 ### 2025-12-04 更新
 - ✅ 删除 AI 对话页面顶部"AI 高管教练"标题
@@ -452,5 +487,5 @@ python migrate.py
 
 ---
 
-**项目状态**: 开发完成，管理后台已上线，功能测试通过，待部署
-**最后更新**: 2025-12-04
+**项目状态**: 代码质量优化完成，生产就绪，待部署
+**最后更新**: 2025-12-05

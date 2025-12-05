@@ -2,7 +2,7 @@
 // 从 Tweakcn 完整转换的主题配置（支持浅色/深色模式）
 
 // ============ 浅色模式（默认） ============
-$background: #F7F5F3;
+$background: #F0EEE6;
 $foreground: #2D2A26;
 $card: #FFFFFF;
 $card-foreground: #2D2A26;
@@ -142,5 +142,35 @@ $font-3xl: 60rpx;
     outline: none;
     border-color: $ring;
     box-shadow: 0 0 0 4rpx rgba($ring, 0.2);
+  }
+}
+
+// ============ 全局动画 ============
+@keyframes thinking {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-8rpx);
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }

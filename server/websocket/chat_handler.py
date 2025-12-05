@@ -7,6 +7,9 @@ from models.chat_message import ChatMessage
 import json
 import os
 import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
@@ -21,6 +24,10 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             msg = json.loads(data)
+
+            # 忽略心跳消息
+            if msg.get("type") == "ping":
+                continue
 
             user_message = msg.get("message")
             tool_type = msg.get("toolType", "free_chat")
@@ -39,7 +46,33 @@ async def websocket_endpoint(websocket: WebSocket):
                     "sessionId": session_id
                 })
 
-            # 保存用户消息
+            # 刷新数据库会话，确保获取最新数据
+            db.expire_all()
+
+            # 查询历史消息（最近5轮对话 = 10条消息）
+            history = db.query(ChatMessage).filter(
+                ChatMessage.session_id == session_id
+            ).order_by(ChatMessage.created_at.desc()).limit(10).all()
+
+            # 反转顺序（从旧到新）
+            history.reverse()
+
+            # 构建消息列表（系统提示词 + 历史对话 + 当前用户消息）
+            messages = [
+                {
+                    "role": "system",
+                    "content": "你是一位经验丰富的高管教练，专注于引导式对话而非直接给出答案。你的核心方法是通过提问帮助对方自己找到解决方案。你擅长倾听、提问和反思，帮助高管明确目标、识别障碍、探索可能性。保持专业、同理心和启发性。"
+                }
+            ]
+
+            # 添加历史消息
+            for h in history:
+                messages.append({"role": h.role, "content": h.content})
+
+            # 添加当前用户消息
+            messages.append({"role": "user", "content": user_message})
+
+            # 保存用户消息到数据库
             user_msg = ChatMessage(
                 session_id=session_id,
                 role="user",
@@ -48,22 +81,7 @@ async def websocket_endpoint(websocket: WebSocket):
             db.add(user_msg)
             db.commit()
 
-            # 查询历史消息
-            history = db.query(ChatMessage).filter(
-                ChatMessage.session_id == session_id
-            ).order_by(ChatMessage.created_at.asc()).limit(20).all()
-
-            # 构建消息列表（系统提示词 + 历史对话）
-            messages = [
-                {
-                    "role": "system",
-                    "content": "你是一位经验丰富的高管教练，专注于引导式对话而非直接给出答案。你的核心方法是通过提问帮助对方自己找到解决方案。你擅长倾听、提问和反思，帮助高管明确目标、识别障碍、探索可能性。保持专业、同理心和启发性。"
-                }
-            ]
-            for h in history:
-                messages.append({"role": h.role, "content": h.content})
-
-            # 调用火山引擎 API（流式，带重试）
+            # 调用 AI API（流式，带重试）
             max_retries = 2
             retry_count = 0
             assistant_content = ""
@@ -85,22 +103,36 @@ async def websocket_endpoint(websocket: WebSocket):
                             },
                             timeout=60.0
                         ) as response:
-                            async for line in response.aiter_lines():
-                                if line.startswith("data: "):
-                                    chunk_data = line[6:]
-                                    if chunk_data == "[DONE]":
+                            buffer = ""
+                            stream_done = False
+                            async for chunk_bytes in response.aiter_bytes():
+                                buffer += chunk_bytes.decode("utf-8", errors="ignore")
+                                while "\n\n" in buffer:
+                                    event, buffer = buffer.split("\n\n", 1)
+                                    if not event.strip():
+                                        continue
+                                    for line in event.split("\n"):
+                                        if not line.startswith("data: "):
+                                            continue
+                                        chunk_data = line[6:]
+                                        if chunk_data == "[DONE]":
+                                            stream_done = True
+                                            break
+                                        try:
+                                            chunk = json.loads(chunk_data)
+                                            delta = chunk["choices"][0]["delta"].get("content", "")
+                                            if delta:
+                                                assistant_content += delta
+                                                await websocket.send_json({
+                                                    "type": "chunk",
+                                                    "content": delta
+                                                })
+                                        except:
+                                            pass
+                                    if stream_done:
                                         break
-                                    try:
-                                        chunk = json.loads(chunk_data)
-                                        delta = chunk["choices"][0]["delta"].get("content", "")
-                                        if delta:
-                                            assistant_content += delta
-                                            await websocket.send_json({
-                                                "type": "chunk",
-                                                "content": delta
-                                            })
-                                    except:
-                                        pass
+                                if stream_done:
+                                    break
                     break
                 except Exception as e:
                     retry_count += 1
@@ -127,9 +159,13 @@ async def websocket_endpoint(websocket: WebSocket):
             })
 
     except Exception as e:
-        await websocket.send_json({
-            "type": "error",
-            "error": str(e)
-        })
+        logger.error(f"[WebSocket] 异常: {e}", exc_info=True)
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "error": str(e)
+            })
+        except:
+            pass
     finally:
         db.close()

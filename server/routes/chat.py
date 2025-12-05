@@ -60,18 +60,26 @@ async def get_sessions(
         ChatSession.user_id == user_id
     ).order_by(ChatSession.created_at.desc()).all()
 
+    result = []
+    for s in sessions:
+        # 查询该会话的第一条用户消息
+        first_user_msg = db.query(ChatMessage).filter(
+            ChatMessage.session_id == s.id,
+            ChatMessage.role == "user"
+        ).order_by(ChatMessage.created_at.asc()).first()
+
+        result.append({
+            "id": str(s.id),
+            "userId": str(s.user_id),
+            "toolType": s.tool_type,
+            "createdAt": s.created_at.isoformat(),
+            "firstMessage": first_user_msg.content if first_user_msg else "新对话"
+        })
+
     return {
         "code": 0,
         "message": "success",
-        "data": [
-            {
-                "id": str(s.id),
-                "userId": str(s.user_id),
-                "toolType": s.tool_type,
-                "createdAt": s.created_at.isoformat()
-            }
-            for s in sessions
-        ]
+        "data": result
     }
 
 @router.get("/sessions/{session_id}/messages")
