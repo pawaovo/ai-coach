@@ -1,17 +1,19 @@
-// src/pages/connect/index.tsx
-import { View, Text, Image, Button } from '@tarojs/components';
+// 联系我们页 - 新设计
+import { View, Text, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import React, { useState } from 'react';
+import CustomTabBar from '../../components/CustomTabBar';
 import './index.scss';
 
 const ConnectPage = () => {
-  const [showQRCode, setShowQRCode] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyWechat = () => {
     Taro.setClipboardData({
       data: 'your_wechat_id',
       success: () => {
-        Taro.showToast({ title: '微信号已复制', icon: 'success' });
+        setCopiedId('wechat');
+        setTimeout(() => setCopiedId(null), 2000);
       }
     });
   };
@@ -21,58 +23,85 @@ const ConnectPage = () => {
   };
 
   const handleVisitWebsite = () => {
-    Taro.navigateToMiniProgram({
-      appId: 'your_h5_appid', // 或使用 web-view
-      path: 'pages/index/index'
+    Taro.setClipboardData({
+      data: 'https://www.xxx.com',
+      success: () => {
+        Taro.showToast({ title: '网址已复制', icon: 'success' });
+      }
     });
   };
 
   return (
     <View className="connect-page">
+      {/* Header */}
       <View className="header">
-        <Text className="title">欢迎联系我们</Text>
+        <Text className="title">联系我们</Text>
       </View>
 
-      <View className="section">
-        <Text className="section-title">关注我们的公众号</Text>
-        <Image
-          src="/assets/qrcode.png"
-          className="qrcode"
-          mode="aspectFit"
-          onClick={() => setShowQRCode(true)}
-        />
-        <Text className="hint">点击查看大图</Text>
-      </View>
-
-      {/* 联系方式 */}
-      <View className="section">
-        <Text className="section-title">获取无限次对话服务/业务合作</Text>
-        <View className="contact-item" onClick={handleCopyWechat}>
-          <Text className="label">微信：</Text>
-          <Text className="value">your_wechat_id</Text>
-          <Text className="action">复制</Text>
+      <View className="content">
+        {/* QR Code Card */}
+        <View className="qr-card">
+          <View className="qr-placeholder">
+            <Image
+              src="/assets/qrcode.png"
+              className="qr-image"
+              mode="aspectFit"
+            />
+          </View>
+          <View className="qr-info">
+            <Text className="qr-title">关注公众号</Text>
+            <Text className="qr-desc">获取更多商业洞察</Text>
+          </View>
         </View>
-        <View className="contact-item" onClick={handleCall}>
-          <Text className="label">电话：</Text>
-          <Text className="value">138-xxxx-xxxx</Text>
-          <Text className="action">拨打</Text>
+
+        {/* Contact List */}
+        <View className="contact-list">
+          {/* WeChat */}
+          <View className="contact-item" onClick={handleCopyWechat}>
+            <View className="item-header">
+              <Text className="item-label">微信</Text>
+              <View className={`item-icon ${copiedId === 'wechat' ? 'copied' : ''}`}>
+                {copiedId === 'wechat' ? (
+                  <View className="check-icon" />
+                ) : (
+                  <View className="copy-icon" />
+                )}
+              </View>
+            </View>
+            <Text className="item-value">your_wechat_id</Text>
+          </View>
+
+          {/* Phone */}
+          <View className="contact-item" onClick={handleCall}>
+            <View className="item-header">
+              <Text className="item-label">电话</Text>
+              <View className="item-icon">
+                <View className="arrow-icon" />
+              </View>
+            </View>
+            <Text className="item-value">138-xxxx-xxxx</Text>
+          </View>
+
+          {/* Website */}
+          <View className="contact-item" onClick={handleVisitWebsite}>
+            <View className="item-header">
+              <Text className="item-label">官方网站</Text>
+              <View className="item-icon">
+                <View className="arrow-icon" />
+              </View>
+            </View>
+            <Text className="item-value">www.xxx.com</Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View className="footer">
+          <Text className="copyright">© 2025 AI Coach</Text>
         </View>
       </View>
 
-      {/* 官网 */}
-      <View className="section">
-        <Text className="section-title">访问官方网站</Text>
-        <Button className="website-btn" onClick={handleVisitWebsite}>
-          前往官网
-        </Button>
-      </View>
-
-      {/* 二维码弹窗 */}
-      {showQRCode && (
-        <View className="modal" onClick={() => setShowQRCode(false)}>
-          <Image src="/assets/qrcode.png" className="modal-qrcode" mode="aspectFit" />
-        </View>
-      )}
+      {/* Custom TabBar */}
+      <CustomTabBar current={2} />
     </View>
   );
 };

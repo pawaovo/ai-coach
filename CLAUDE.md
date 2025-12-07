@@ -82,10 +82,14 @@ ai-coach/
 ├── miniapp/                    # 小程序前端
 │   ├── src/
 │   │   ├── app.tsx            # 应用入口
-│   │   ├── app.config.ts      # 小程序配置
+│   │   ├── app.config.ts      # 小程序配置（custom tabBar）
 │   │   ├── app.scss           # 全局样式
 │   │   ├── constants/
 │   │   │   └── index.ts       # 常量配置（API、工具、人格）
+│   │   ├── components/
+│   │   │   └── CustomTabBar/  # 自定义底部导航栏
+│   │   │       ├── index.tsx  # TabBar 组件（点击放大动画）
+│   │   │       └── index.scss # TabBar 样式
 │   │   ├── pages/
 │   │   │   ├── index/         # AI 教练对话页
 │   │   │   ├── tools/         # 商业工具页
@@ -145,6 +149,7 @@ usage_logs (id, user_id, date, count, created_at)
 
 | 文件 | 职责 |
 |------|------|
+| `miniapp/src/components/CustomTabBar/index.tsx` | 自定义 TabBar 组件（点击放大动画、文字标签） |
 | `miniapp/src/app.tsx` | 小程序入口，处理 NFC 唤醒、自动登录和授权跳转 |
 | `miniapp/src/pages/authorize/index.tsx` | 用户授权页面，获取昵称、头像、手机号 |
 | `miniapp/src/constants/index.ts` | 配置 API 地址、商业工具、AI 人格 |
@@ -337,6 +342,16 @@ A: 使用 `npm install --legacy-peer-deps` 安装依赖
 
 ## UI/UX 优化记录
 
+### 2025-12-07 更新
+- ✅ 自定义 TabBar 组件（CustomTabBar）
+  - 使用统一的 active 图标（不区分活跃/非活跃状态）
+  - 点击放大动画效果（scale 1.2，150ms）
+  - 仅当前页面显示对应文字标签（工具/对话/联系）
+  - TabBar 高度 140rpx，图标尺寸 52rpx
+- ✅ AI 对话页输入栏位置调整（bottom: 140rpx）
+- ✅ 商业工具弹窗输入栏位置修复（padding-bottom: 160rpx）
+- ✅ 代码优化：合并重复的 padding 定义
+
 ### 2025-12-05 更新
 - ✅ 全局背景色改为 `#F0EEE6`（温暖米色）
 - ✅ 工具卡片背景色改为 `#E3DACC`
@@ -488,4 +503,4 @@ python migrate.py
 ---
 
 **项目状态**: 代码质量优化完成，生产就绪，待部署
-**最后更新**: 2025-12-05
+**最后更新**: 2025-12-07

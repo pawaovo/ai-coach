@@ -1,13 +1,14 @@
-// AI 教练对话页（首页）
-import { View, Text, Input, ScrollView } from '@tarojs/components';
+// AI 教练对话页（首页）- 新设计
+import { View, Text, Textarea, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import websocket from '../../services/websocket';
 import api from '../../services/api';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
 import { storage } from '../../utils/storage';
-import { COACH_PERSONA, STORAGE_KEYS } from '../../constants';
+import { COACH_PERSONA, STORAGE_KEYS, PRESETS } from '../../constants';
 import type { Message } from '../../types';
+import CustomTabBar from '../../components/CustomTabBar';
 import './index.scss';
 
 const ChatPage = () => {
@@ -16,8 +17,6 @@ const ChatPage = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [quotaRemaining, setQuotaRemaining] = useState(10);
-  const [quotaTotal, setQuotaTotal] = useState(10);
   const [scrollIntoViewId, setScrollIntoViewId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [historySessions, setHistorySessions] = useState<any[]>([]);
@@ -30,28 +29,19 @@ const ChatPage = () => {
 
   // 自动滚动到最新消息
   useEffect(() => {
-    const lastMsgId = `msg-${messages.length - 1}`;
-    setScrollIntoViewId(lastMsgId);
+    if (messages.length > 0) {
+      setScrollIntoViewId(`msg-${messages.length - 1}`);
+    }
   }, [messages]);
 
   // 流式文本更新时也触发滚动
   useEffect(() => {
     if (streamingText) {
-      const streamingMsgId = `msg-streaming`;
-      setScrollIntoViewId(streamingMsgId);
+      setScrollIntoViewId('msg-streaming');
     }
   }, [streamingText]);
 
-
   const initChat = async () => {
-    // 显示欢迎语
-    setMessages([{
-      id: '1',
-      role: 'assistant',
-      content: COACH_PERSONA.greeting,
-      timestamp: new Date()
-    }]);
-
     // 等待登录完成后再连接 WebSocket
     const maxRetries = 10;
     let retries = 0;
@@ -61,9 +51,6 @@ const ChatPage = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
       retries++;
     }
-
-    // 加载配额信息
-    await loadQuotaInfo();
 
     // 连接 WebSocket
     try {
@@ -81,14 +68,6 @@ const ChatPage = () => {
       } catch (error) {
         console.error('加载会话失败:', error);
       }
-    }
-  };
-
-  const loadQuotaInfo = async () => {
-    const usageInfo = await getUsageInfo();
-    if (usageInfo) {
-      setQuotaRemaining(usageInfo.remaining);
-      setQuotaTotal(usageInfo.total);
     }
   };
 
@@ -160,8 +139,6 @@ const ChatPage = () => {
     try {
       websocket.sendMessage(inputValue, 'free_chat', sessionId || undefined);
       await incrementUsage();
-      // 更新配额显示
-      await loadQuotaInfo();
     } catch (error) {
       console.error('发送消息失败:', error);
       Taro.showToast({ title: '发送失败', icon: 'error' });
@@ -170,13 +147,10 @@ const ChatPage = () => {
   };
 
   const handleNewSession = () => {
+    if (isStreaming) return;
+    // 保存当前会话（如果有消息）
     setSessionId(null);
-    setMessages([{
-      id: '1',
-      role: 'assistant',
-      content: COACH_PERSONA.greeting,
-      timestamp: new Date()
-    }]);
+    setMessages([]);
     storage.remove(STORAGE_KEYS.LAST_SESSION);
   };
 
@@ -196,66 +170,100 @@ const ChatPage = () => {
     await loadSession(sid);
   };
 
-  // 按日期分组历史会话
-  const groupedSessions = historySessions.reduce((groups, session) => {
-    const date = new Date(session.createdAt);
-    const key = `${date.getMonth() + 1}月${date.getDate()}日`;
-    if (!groups[key]) {
-      groups[key] = [];
-    }
-    groups[key].push(session);
-    return groups;
-  }, {} as Record<string, any[]>);
+  const handlePresetClick = (text: string) => {
+    setInputValue(text);
+  };
 
   return (
     <View className="chat-page">
-      {/* 自定义导航栏 */}
-      <View className="custom-nav">
-        <View className="nav-left">
-          <Text className="history-icon" onClick={handleShowHistory}>☰</Text>
-          <View className="new-icon" onClick={handleNewSession}>
-            <View className="plus-h" />
-            <View className="plus-v" />
+      {/* Header */}
+      <View className="header">
+        <Text className="title">AI Coach</Text>
+        <View className="header-actions">
+          <View className="icon-btn" onClick={handleShowHistory}>
+            <View className="history-icon" />
+          </View>
+          <View className="icon-btn" onClick={handleNewSession}>
+            <View className="plus-icon">
+              <View className="plus-h" />
+              <View className="plus-v" />
+            </View>
           </View>
         </View>
-        <Text className="quota-text">{quotaRemaining}/{quotaTotal}</Text>
-        <View className="nav-right" />
       </View>
 
-      <ScrollView scrollY className="message-list" scrollIntoView={scrollIntoViewId} scrollWithAnimation>
-        {messages.map((msg, index) => (
-          <View key={msg.id} id={`msg-${index}`} className="message-wrapper">
-            <View className={`message ${msg.role}`}>
-              {msg.role === 'assistant' && <View className="msg-avatar" />}
-              <View className="msg-bubble">
-                <Text className="msg-content" userSelect>{msg.content}</Text>
-              </View>
+      {/* Messages Area */}
+      <ScrollView
+        scrollY
+        className="message-area"
+        scrollIntoView={scrollIntoViewId}
+        scrollWithAnimation
+      >
+        {messages.length === 0 ? (
+          // 空状态 - 显示预设提示
+          <View className="empty-state">
+            <View className="presets-grid">
+              {PRESETS.map((preset, index) => (
+                <View
+                  key={index}
+                  className="preset-btn"
+                  onClick={() => handlePresetClick(preset.text)}
+                >
+                  <Text className="preset-label">{preset.label}</Text>
+                  <View className="preset-arrow" />
+                </View>
+              ))}
             </View>
           </View>
-        ))}
-
-        {isStreaming && streamingText && (
-          <View id="msg-streaming" className="message-wrapper">
-            <View className="message assistant">
-              <View className="msg-avatar" />
-              <View className="msg-bubble">
-                <Text className="msg-content" userSelect>{streamingText}</Text>
-                <Text className="cursor">|</Text>
+        ) : (
+          // 消息列表
+          <View className="messages-list">
+            {messages.map((msg, index) => (
+              <View key={msg.id} id={`msg-${index}`} className="message-wrapper">
+                <View className={`message ${msg.role}`}>
+                  {msg.role === 'assistant' && (
+                    <View className="ai-avatar">
+                      <Text className="ai-text">AI</Text>
+                    </View>
+                  )}
+                  <View className={`msg-bubble ${msg.role}`}>
+                    <Text className="msg-content" userSelect>{msg.content}</Text>
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
-        )}
+            ))}
 
-        {isStreaming && !streamingText && (
-          <View id="msg-thinking" className="message-wrapper">
-            <View className="message assistant">
-              <View className="msg-avatar" />
-              <View className="msg-bubble thinking">
-                <View className="dot" />
-                <View className="dot" />
-                <View className="dot" />
+            {/* 流式文本 */}
+            {isStreaming && streamingText && (
+              <View id="msg-streaming" className="message-wrapper">
+                <View className="message assistant">
+                  <View className="ai-avatar">
+                    <Text className="ai-text">AI</Text>
+                  </View>
+                  <View className="msg-bubble assistant">
+                    <Text className="msg-content" userSelect>{streamingText}</Text>
+                  </View>
+                </View>
               </View>
-            </View>
+            )}
+
+            {/* 加载动画 */}
+            {isStreaming && !streamingText && (
+              <View id="msg-thinking" className="message-wrapper">
+                <View className="message assistant">
+                  <View className="ai-avatar">
+                    <Text className="ai-text">AI</Text>
+                  </View>
+                  <View className="loading-dots">
+                    <View className="dot" style={{ animationDelay: '0ms' }} />
+                    <View className="dot" style={{ animationDelay: '150ms' }} />
+                    <View className="dot" style={{ animationDelay: '300ms' }} />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <View className="scroll-anchor" />
           </View>
         )}
       </ScrollView>
@@ -267,48 +275,62 @@ const ChatPage = () => {
           <View className="modal-content">
             <View className="modal-header">
               <Text className="modal-title">历史对话</Text>
-              <Text className="modal-close" onClick={() => setShowHistory(false)}>✕</Text>
+              <View className="modal-close" onClick={() => setShowHistory(false)}>
+                <Text className="close-icon">×</Text>
+              </View>
             </View>
             <ScrollView scrollY className="history-list">
-              {Object.keys(groupedSessions).length === 0 ? (
+              {historySessions.length === 0 ? (
                 <View className="empty-hint">
-                  <Text>暂无历史对话</Text>
+                  <Text>暂无历史记录</Text>
                 </View>
               ) : (
-                Object.entries(groupedSessions).map(([date, sessions]) => (
-                  <View key={date} className="history-group">
-                    <Text className="group-date">{date}</Text>
-                    {sessions.map((session) => (
-                      <View
-                        key={session.id}
-                        className="history-item"
-                        onClick={() => handleSelectSession(session.id)}
-                      >
-                        <Text className="item-text">{session.firstMessage || '新对话'}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ))
+                <View className="history-items">
+                  {historySessions.map((session) => (
+                    <View
+                      key={session.id}
+                      className="history-item"
+                      onClick={() => handleSelectSession(session.id)}
+                    >
+                      <Text className="item-text">{session.firstMessage || '新对话'}</Text>
+                      <View className="item-arrow" />
+                    </View>
+                  ))}
+                </View>
               )}
             </ScrollView>
           </View>
         </View>
       )}
 
+      {/* Input Area */}
       <View className="input-area">
         <View className="input-wrapper">
-          <Input
+          <Textarea
             className="input"
             value={inputValue}
             onInput={(e) => setInputValue(e.detail.value)}
-            placeholder="说说你的想法..."
+            placeholder="说点什么..."
+            placeholderClass="input-placeholder"
             disabled={isStreaming}
+            autoHeight
+            maxlength={2000}
           />
-          <View className={`send-btn ${inputValue.trim() ? 'active' : ''}`} onClick={handleSend}>
-            <View className="arrow-icon" />
+          <View
+            className={`send-btn ${inputValue.trim() && !isStreaming ? 'active' : ''}`}
+            onClick={handleSend}
+          >
+            {isStreaming ? (
+              <View className="loading-spinner" />
+            ) : (
+              <View className="arrow-up" />
+            )}
           </View>
         </View>
       </View>
+
+      {/* Custom TabBar */}
+      <CustomTabBar current={1} />
     </View>
   );
 };

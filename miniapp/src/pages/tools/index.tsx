@@ -1,12 +1,60 @@
-// 商业工具页
-import { View, Text, Input, ScrollView } from '@tarojs/components';
+// 商业工具页 - 新设计
+import { View, Text, Textarea, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import React, { useState, useEffect } from 'react';
 import websocket from '../../services/websocket';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
 import { BUSINESS_TOOLS } from '../../constants';
 import type { Message } from '../../types';
+import CustomTabBar from '../../components/CustomTabBar';
 import './index.scss';
+
+// 工具图标映射
+const ToolIcon = ({ id }: { id: string }) => {
+  switch (id) {
+    case 'swot':
+      return (
+        <View className="tool-icon-inner">
+          <View className="trend-line" />
+          <View className="trend-arrow" />
+        </View>
+      );
+    case 'smart':
+      return (
+        <View className="tool-icon-inner">
+          <View className="target-outer" />
+          <View className="target-inner" />
+        </View>
+      );
+    case 'matrix':
+      return (
+        <View className="tool-icon-inner grid-icon">
+          <View className="grid-cell" />
+          <View className="grid-cell" />
+          <View className="grid-cell" />
+          <View className="grid-cell" />
+        </View>
+      );
+    case '5why':
+      return (
+        <View className="tool-icon-inner">
+          <Text className="question-mark">?</Text>
+        </View>
+      );
+    default:
+      return null;
+  }
+};
+
+// 星形 Logo 组件
+const StarburstLogo = () => (
+  <View className="starburst-logo">
+    <View className="star-point p1" />
+    <View className="star-point p2" />
+    <View className="star-point p3" />
+    <View className="star-point p4" />
+  </View>
+);
 
 const ToolsPage = () => {
   const [showChat, setShowChat] = useState(false);
@@ -34,9 +82,9 @@ const ToolsPage = () => {
     setSelectedTool(tool);
     setShowChat(true);
     setMessages([{
-      id: '1',
+      id: 'init',
       role: 'assistant',
-      content: `你好！我是你的${tool.name}助手。${tool.description}`,
+      content: tool.initialMessage || `你好！我是你的${tool.name}助手。${tool.description}`,
       timestamp: new Date()
     }]);
     setSessionId(null);
@@ -103,10 +151,8 @@ const ToolsPage = () => {
     try {
       websocket.sendMessage(inputValue, selectedTool?.id || 'free_chat', sessionId || undefined);
       await incrementUsage();
-      // 更新配额显示
       const usageInfo = await getUsageInfo();
       if (usageInfo) {
-        // 触发全局配额更新事件
         Taro.eventCenter.trigger('quotaUpdated', usageInfo);
       }
     } catch (error) {
@@ -123,88 +169,135 @@ const ToolsPage = () => {
 
   return (
     <View className="tools-page">
-      <View className={`page-content ${showChat ? 'blurred' : ''}`}>
-        <View className="header">
-          <Text className="title">商业工具箱</Text>
-        </View>
-
-        <View className="tools-list">
-          {BUSINESS_TOOLS.map(tool => (
-            <View
-              key={tool.id}
-              className="tool-card"
-              onClick={() => handleToolClick(tool)}
-            >
-              <View className="tool-info">
-                <View className="tool-header">
-                  <Text className="tool-name-styled">{tool.name}</Text>
-                  <Text className="tool-tag">{tool.tag}</Text>
-                </View>
-                <Text className="tool-desc">{tool.description}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+      {/* Header */}
+      <View className="header">
+        <Text className="title">商业工具</Text>
       </View>
 
-      {showChat && (
-        <View className="half-screen-chat">
-          <View className="chat-mask" onClick={handleCloseChat} />
-          <View className="chat-container">
-            <View className="chat-header">
-              <Text className="chat-title">{selectedTool?.name}</Text>
-              <Text className="chat-close" onClick={handleCloseChat}>✕</Text>
+      {/* 2x2 Grid */}
+      <View className="tools-grid">
+        {BUSINESS_TOOLS.map((tool) => (
+          <View
+            key={tool.id}
+            className="tool-card"
+            onClick={() => handleToolClick(tool)}
+          >
+            {/* Top: Icon & Arrow */}
+            <View className="card-top">
+              <View className="tool-icon">
+                <ToolIcon id={tool.id} />
+              </View>
+              <View className="card-arrow" />
             </View>
 
-            <ScrollView scrollY className="chat-messages" scrollIntoView={scrollIntoViewId} scrollWithAnimation>
+            {/* Bottom: Content */}
+            <View className="card-bottom">
+              <Text className="tool-tag">{tool.tag}</Text>
+              <Text className="tool-name">{tool.name}</Text>
+              <Text className="tool-desc">{tool.description}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Custom TabBar */}
+      <CustomTabBar current={0} />
+
+      {/* Tool Chat Sheet */}
+      {showChat && selectedTool && (
+        <View className="chat-sheet">
+          <View className="sheet-mask" onClick={handleCloseChat} />
+          <View className="sheet-container">
+            {/* Sheet Header */}
+            <View className="sheet-header">
+              <View className="header-left">
+                <View className="header-icon">
+                  <ToolIcon id={selectedTool.id} />
+                </View>
+                <Text className="header-title">{selectedTool.name}</Text>
+              </View>
+              <View className="header-close" onClick={handleCloseChat}>
+                <Text className="close-icon">×</Text>
+              </View>
+            </View>
+
+            {/* Messages */}
+            <ScrollView
+              scrollY
+              className="sheet-messages"
+              scrollIntoView={scrollIntoViewId}
+              scrollWithAnimation
+            >
               {messages.map((msg, index) => (
                 <View key={msg.id} id={`tool-msg-${index}`} className="message-wrapper">
                   <View className={`message ${msg.role}`}>
-                    {msg.role === 'assistant' && <View className="msg-avatar" />}
-                    <View className="msg-bubble">
+                    {msg.role === 'assistant' && (
+                      <View className="ai-avatar">
+                        <StarburstLogo />
+                      </View>
+                    )}
+                    <View className={`msg-bubble ${msg.role}`}>
                       <Text className="msg-content" userSelect>{msg.content}</Text>
                     </View>
                   </View>
                 </View>
               ))}
 
+              {/* Streaming */}
               {isStreaming && streamingText && (
                 <View id="tool-msg-streaming" className="message-wrapper">
                   <View className="message assistant">
-                    <View className="msg-avatar" />
-                    <View className="msg-bubble">
+                    <View className="ai-avatar">
+                      <StarburstLogo />
+                    </View>
+                    <View className="msg-bubble assistant">
                       <Text className="msg-content" userSelect>{streamingText}</Text>
-                      <Text className="cursor">|</Text>
                     </View>
                   </View>
                 </View>
               )}
 
+              {/* Loading */}
               {isStreaming && !streamingText && (
                 <View id="tool-msg-thinking" className="message-wrapper">
                   <View className="message assistant">
-                    <View className="msg-avatar" />
-                    <View className="msg-bubble thinking">
-                      <View className="dot" />
-                      <View className="dot" />
-                      <View className="dot" />
+                    <View className="ai-avatar">
+                      <StarburstLogo />
+                    </View>
+                    <View className="loading-dots">
+                      <View className="dot" style={{ animationDelay: '0ms' }} />
+                      <View className="dot" style={{ animationDelay: '150ms' }} />
+                      <View className="dot" style={{ animationDelay: '300ms' }} />
                     </View>
                   </View>
                 </View>
               )}
+
+              <View className="scroll-anchor" />
             </ScrollView>
 
-            <View className="chat-input-area">
+            {/* Input */}
+            <View className="sheet-input">
               <View className="input-wrapper">
-                <Input
+                <Textarea
                   className="input"
                   value={inputValue}
                   onInput={(e) => setInputValue(e.detail.value)}
-                  placeholder="说说你的想法..."
+                  placeholder={`询问关于${selectedTool.name}的问题...`}
+                  placeholderClass="input-placeholder"
                   disabled={isStreaming}
+                  autoHeight
+                  maxlength={2000}
                 />
-                <View className={`send-btn ${inputValue.trim() ? 'active' : ''}`} onClick={handleSend}>
-                  <View className="arrow-icon" />
+                <View
+                  className={`send-btn ${inputValue.trim() && !isStreaming ? 'active' : ''}`}
+                  onClick={handleSend}
+                >
+                  {isStreaming ? (
+                    <View className="loading-spinner" />
+                  ) : (
+                    <View className="arrow-up" />
+                  )}
                 </View>
               </View>
             </View>

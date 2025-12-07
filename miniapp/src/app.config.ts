@@ -8,30 +8,29 @@ export default defineAppConfig({
   ],
   window: {
     backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#fff',
+    navigationBarBackgroundColor: '#EFEDE6',
     navigationBarTitleText: '',
-    navigationBarTextStyle: 'black'
+    navigationBarTextStyle: 'black',
+    navigationStyle: 'custom'
   },
   tabBar: {
-    color: '#8A8580',
-    selectedColor: '#C96442',
-    backgroundColor: '#FFFFFF',
+    custom: true,
+    color: '#8D8D8A',
+    selectedColor: '#191919',
+    backgroundColor: '#EFEDE6',
     borderStyle: 'white',
     list: [
       {
         pagePath: 'pages/tools/index',
-        iconPath: 'assets/tab-tools.png',
-        selectedIconPath: 'assets/tab-tools.png'
+        text: '工具'
       },
       {
         pagePath: 'pages/index/index',
-        iconPath: 'assets/tab-coach.png',
-        selectedIconPath: 'assets/tab-coach.png'
+        text: '对话'
       },
       {
         pagePath: 'pages/connect/index',
-        iconPath: 'assets/tab-connect.png',
-        selectedIconPath: 'assets/tab-connect.png'
+        text: '联系'
       }
     ]
   }
