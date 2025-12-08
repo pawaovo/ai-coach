@@ -351,10 +351,14 @@
 
       .sheet-messages {
         flex: 1;
-        padding: 32rpx 32rpx 32rpx 32rpx;
+        padding: 32rpx 32rpx 0rpx 32rpx;
 
         .message-wrapper {
           margin-bottom: 48rpx;
+
+          &:last-child {
+            margin-bottom: 24rpx;
+          }
 
           .message {
             display: flex;
@@ -626,6 +630,80 @@
             }
           }
         }
+      }
+    }
+  }
+
+  // ========== Options Container ==========
+  .options-container {
+    padding: 0rpx 32rpx 24rpx 32rpx;
+    flex-shrink: 0;
+
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12rpx;
+    }
+
+    .option-card {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+      padding: 20rpx 24rpx;
+      border-radius: 20rpx;
+      background: #FFFFFF;
+      border: 2rpx solid rgba($border, 0.5);
+      transition: all 0.2s;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+      &.selected {
+        border-color: $primary;
+        background: rgba($primary, 0.06);
+        box-shadow: 0 2rpx 12rpx rgba($primary, 0.15);
+
+        .option-label {
+          color: $foreground;
+          font-weight: 600;
+        }
+
+        .option-check {
+          border-color: $primary;
+          background: rgba($primary, 0.1);
+
+          .check-mark {
+            background: $primary;
+          }
+        }
+      }
+
+      &:active {
+        transform: scale(0.98);
+      }
+
+      .option-check {
+        width: 32rpx;
+        height: 32rpx;
+        border-radius: 50%;
+        border: 2rpx solid rgba($border, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.2s;
+
+        .check-mark {
+          width: 16rpx;
+          height: 16rpx;
+          border-radius: 50%;
+          background: $foreground;
+        }
+      }
+
+      .option-label {
+        flex: 1;
+        font-size: 28rpx;
+        color: $secondary-foreground;
+        line-height: 1.5;
       }
     }
   }

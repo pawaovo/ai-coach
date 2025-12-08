@@ -6,7 +6,7 @@ import websocket from '../../services/websocket';
 import api from '../../services/api';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
 import { BUSINESS_TOOLS } from '../../constants';
-import type { Message, ChatSession } from '../../types';
+import type { Message, ChatSession, SuggestedOption } from '../../types';
 import CustomTabBar from '../../components/CustomTabBar';
 import './index.scss';
 
@@ -61,6 +61,8 @@ const ToolsPage = () => {
   const [scrollIntoViewId, setScrollIntoViewId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [historySessions, setHistorySessions] = useState<ChatSession[]>([]);
+  const [suggestedOptions, setSuggestedOptions] = useState<SuggestedOption[]>([]);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -77,16 +79,30 @@ const ToolsPage = () => {
   const handleToolClick = async (tool: typeof BUSINESS_TOOLS[0]) => {
     setSelectedTool(tool);
     setShowChat(true);
+    const initialMsg = tool.initialMessage || `你好！我是你的${tool.name}助手。${tool.description}`;
     setMessages([{
       id: 'init',
       role: 'assistant',
-      content: tool.initialMessage || `你好！我是你的${tool.name}助手。${tool.description}`,
+      content: initialMsg,
       timestamp: new Date()
     }]);
     setSessionId(null);
     setInputValue('');
     setStreamingText('');
     setIsStreaming(false);
+    setSelectedOptionIds(new Set());
+
+    // 设置初始预设选项
+    if (tool.initialOptions && tool.initialOptions.length > 0) {
+      const formattedOptions = tool.initialOptions.map((opt, index) => ({
+        id: `init-${tool.id}-${index}`,
+        label: opt.label,
+        value: opt.value
+      }));
+      setSuggestedOptions(formattedOptions);
+    } else {
+      setSuggestedOptions([]);
+    }
 
     try {
       await websocket.connect();
@@ -120,6 +136,11 @@ const ToolsPage = () => {
       setSessionId(sid);
     };
 
+    websocket.onOptions = (options: SuggestedOption[]) => {
+      setSuggestedOptions(options);
+      setSelectedOptionIds(new Set());
+    };
+
     websocket.onError = (error: string) => {
       Taro.showToast({ title: error, icon: 'none' });
       setIsStreaming(false);
@@ -127,25 +148,46 @@ const ToolsPage = () => {
   };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || isStreaming) return;
+    if (isStreaming) return;
+
+    const trimmedInput = inputValue.trim();
+    const selectedValues = suggestedOptions
+      .filter(option => selectedOptionIds.has(option.id))
+      .map(option => option.value);
+
+    if (!trimmedInput && selectedValues.length === 0) return;
 
     const canSend = await checkDailyQuota();
     if (!canSend) return;
 
+    let finalContent = trimmedInput ? inputValue : '';
+    if (selectedValues.length > 0) {
+      const selectionText = `我选择了：\n${selectedValues.join('\n')}`;
+      finalContent = finalContent
+        ? `${finalContent}\n\n${selectionText}`
+        : selectionText;
+    }
+
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputValue,
+      content: finalContent,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
+    setSuggestedOptions([]);
+    setSelectedOptionIds(new Set());
     setIsStreaming(true);
     setStreamingText('');
 
     try {
-      websocket.sendMessage(inputValue, selectedTool?.id || 'free_chat', sessionId || undefined);
+      websocket.sendMessage(
+        finalContent,
+        selectedTool?.id || 'free_chat',
+        sessionId || undefined
+      );
       await incrementUsage();
       const usageInfo = await getUsageInfo();
       if (usageInfo) {
@@ -158,8 +200,22 @@ const ToolsPage = () => {
     }
   };
 
+  const handleToggleOption = (optionId: string) => {
+    setSelectedOptionIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(optionId)) {
+        newSet.delete(optionId);
+      } else {
+        newSet.add(optionId);
+      }
+      return newSet;
+    });
+  };
+
   const handleCloseChat = () => {
     setShowChat(false);
+    setSuggestedOptions([]);
+    setSelectedOptionIds(new Set());
     websocket.close();
   };
 
@@ -180,6 +236,8 @@ const ToolsPage = () => {
 
   const handleSelectSession = async (sid: string, toolType: string) => {
     setShowHistory(false);
+    setSuggestedOptions([]);
+    setSelectedOptionIds(new Set());
 
     // 找到对应的工具
     const tool = BUSINESS_TOOLS.find(t => t.id === toolType);
@@ -357,6 +415,26 @@ const ToolsPage = () => {
               <View className="scroll-anchor" />
             </ScrollView>
 
+            {/* Options */}
+            {suggestedOptions.length > 0 && (
+              <View className="options-container">
+                <View className="options-list">
+                  {suggestedOptions.map(option => (
+                    <View
+                      key={option.id}
+                      className={`option-card ${selectedOptionIds.has(option.id) ? 'selected' : ''}`}
+                      onClick={() => handleToggleOption(option.id)}
+                    >
+                      <View className="option-check">
+                        {selectedOptionIds.has(option.id) && <View className="check-mark" />}
+                      </View>
+                      <Text className="option-label">{option.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Input */}
             <View className="sheet-input">
               <View className="input-wrapper">
@@ -371,7 +449,7 @@ const ToolsPage = () => {
                   maxlength={2000}
                 />
                 <View
-                  className={`send-btn ${inputValue.trim() && !isStreaming ? 'active' : ''}`}
+                  className={`send-btn ${(inputValue.trim() || selectedOptionIds.size > 0) && !isStreaming ? 'active' : ''}`}
                   onClick={handleSend}
                 >
                   {isStreaming ? (

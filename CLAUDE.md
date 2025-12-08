@@ -204,6 +204,9 @@ usage_logs (id, user_id, date, count, created_at)
 # 流式文本块
 {"type": "chunk", "content": "文本"}
 
+# 智能选项（AI 回复后自动生成）
+{"type": "options", "options": [{"id": "uuid", "label": "显示文字", "value": "实际值"}]}
+
 # 完成信号
 {"type": "done", "sessionId": "uuid"}
 
@@ -235,6 +238,39 @@ usage_logs (id, user_id, date, count, created_at)
 2. **历史上下文**: 查询最近 20 条消息，保持对话连贯
 3. **错误重试**: 最多重试 2 次，失败后向用户显示错误
 4. **消息持久化**: 所有对话自动存入数据库
+5. **智能选项生成**: AI 回复后自动生成 3-5 个引导式选项
+
+### 商业工具引导式对话
+
+商业工具（SWOT、SMART、决策矩阵、5Why）支持引导式对话功能：
+
+1. **预设选项**：每个工具配置 `initialOptions` 数组，点击工具卡片时显示初始选项
+2. **智能选项**：AI 回复后，后端调用第二次 AI API 生成 3-5 个引导式选项
+3. **多选支持**：用户可以选择多个选项，支持选项 + 输入文字一起发送
+4. **消息格式**：选中的选项会以 `我选择了：\n选项1\n选项2` 格式拼接到用户消息中
+
+#### 选项数据结构
+```typescript
+interface SuggestedOption {
+  id: string;      // 唯一标识
+  label: string;   // 显示文字（简短）
+  value: string;   // 实际值（发送给 AI）
+}
+```
+
+#### 工具配置示例
+```typescript
+{
+  id: 'swot',
+  name: 'SWOT 分析',
+  initialMessage: '你好，我是SWOT战略分析助手...',
+  initialOptions: [
+    { label: '分析企业整体战略', value: '我想分析我的企业整体战略定位和竞争优势' },
+    { label: '评估新产品机会', value: '我想评估一个新产品或新项目的可行性' },
+    // ...
+  ]
+}
+```
 
 ## Completed Tasks
 
@@ -255,12 +291,20 @@ usage_logs (id, user_id, date, count, created_at)
 - Tweakcn 主题配置（SCSS + rpx）
 - 商业工具 2/3 屏对话窗口（高斯模糊背景）
 - WebSocket 流式对话修复（Taro 4 全局 API）
+- 商业工具引导式对话功能：
+  - ✅ 预设选项配置（initialOptions）
+  - ✅ AI 智能选项生成（后端第二次 API 调用）
+  - ✅ 多选功能支持
+  - ✅ 选项卡片 UI（圆形复选框 + 选中高亮）
+  - ✅ 选项 + 输入文字混合发送
 - 代码质量优化：
   - ✅ 合并重复的 CSS 动画定义（减少 30 行代码）
   - ✅ 标准化日志记录（logger.error 替代 print）
   - ✅ 提取重复的 TypeScript 类型定义
   - ✅ 删除未使用的导入、状态、函数
   - ✅ 清理调试代码（console.log/print）
+  - ✅ 删除无用的类型字段（Message.suggestedOptions）
+  - ✅ 修复发送按钮激活条件（支持只选择选项发送）
 - 文档更新（README.md + CLAUDE.md）
 
 ### 🚧 待完成
@@ -341,6 +385,18 @@ A: 使用 `npm install --legacy-peer-deps` 安装依赖
 ---
 
 ## UI/UX 优化记录
+
+### 2025-12-08 更新
+- ✅ 商业工具引导式对话功能
+  - 预设选项：点击工具卡片后立即显示 4 个预设选项
+  - 智能选项：AI 回复后自动生成 3-5 个引导式选项
+  - 多选支持：用户可同时选择多个选项
+  - 选项卡片 UI：圆形复选框 + 白色卡片 + 选中高亮（主题色边框和背景）
+  - 无分隔线设计：选项区域与消息区域视觉融合
+  - 发送按钮优化：选择选项后按钮自动激活
+- ✅ 代码质量优化
+  - 删除无用的 `Message.suggestedOptions` 类型字段
+  - 修复发送按钮激活条件逻辑
 
 ### 2025-12-07 更新
 - ✅ 自定义 TabBar 组件（CustomTabBar）
@@ -502,5 +558,5 @@ python migrate.py
 
 ---
 
-**项目状态**: 代码质量优化完成，生产就绪，待部署
-**最后更新**: 2025-12-07
+**项目状态**: 引导式对话功能完成，生产就绪，待部署
+**最后更新**: 2025-12-08

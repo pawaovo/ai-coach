@@ -30,11 +30,18 @@ export interface UsageLog {
   count: number;
 }
 
+export interface SuggestedOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
 export interface WSMessage {
-  type: 'chunk' | 'done' | 'error' | 'session';
+  type: 'chunk' | 'done' | 'error' | 'session' | 'options';
   content?: string;
   sessionId?: string;
   error?: string;
+  options?: SuggestedOption[];
 }
 
 export interface APIResponse<T = any> {

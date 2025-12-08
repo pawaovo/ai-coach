@@ -2,7 +2,7 @@
 import Taro from '@tarojs/taro';
 import { getUserId } from '../utils/auth';
 import { API_CONFIG } from '../constants';
-import type { WSMessage } from '../types';
+import type { WSMessage, SuggestedOption } from '../types';
 
 class WebSocketService {
   private socket: Taro.SocketTask | null = null;
@@ -14,6 +14,7 @@ class WebSocketService {
   onDone?: (sessionId: string) => void;
   onError?: (error: string) => void;
   onSession?: (sessionId: string) => void;
+  onOptions?: (options: SuggestedOption[]) => void;
 
   async connect(): Promise<void> {
     if (this.socket || this.isConnecting) {
@@ -46,6 +47,8 @@ class WebSocketService {
 
           if (data.type === 'chunk' && data.content) {
             this.onChunk?.(data.content);
+          } else if (data.type === 'options' && data.options) {
+            this.onOptions?.(data.options);
           } else if (data.type === 'done' && data.sessionId) {
             this.onDone?.(data.sessionId);
           } else if (data.type === 'session' && data.sessionId) {

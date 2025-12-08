@@ -8,6 +8,7 @@ import json
 import os
 import httpx
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -85,17 +86,19 @@ async def websocket_endpoint(websocket: WebSocket):
             max_retries = 2
             retry_count = 0
             assistant_content = ""
+            headers = {
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            completion_url = f"{OPENAI_BASE_URL}/chat/completions"
 
-            while retry_count <= max_retries:
-                try:
-                    async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient() as client:
+                while retry_count <= max_retries:
+                    try:
                         async with client.stream(
                             "POST",
-                            f"{OPENAI_BASE_URL}/chat/completions",
-                            headers={
-                                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                                "Content-Type": "application/json"
-                            },
+                            completion_url,
+                            headers=headers,
                             json={
                                 "model": OPENAI_MODEL,
                                 "messages": messages,
@@ -133,15 +136,26 @@ async def websocket_endpoint(websocket: WebSocket):
                                         break
                                 if stream_done:
                                     break
-                    break
-                except Exception as e:
-                    retry_count += 1
-                    if retry_count > max_retries:
-                        raise e
-                    await websocket.send_json({
-                        "type": "error",
-                        "error": f"请求失败，正在重试 ({retry_count}/{max_retries})..."
-                    })
+                        break
+                    except Exception as e:
+                        retry_count += 1
+                        if retry_count > max_retries:
+                            raise e
+                        await websocket.send_json({
+                            "type": "error",
+                            "error": f"请求失败，正在重试 ({retry_count}/{max_retries})..."
+                        })
+
+                # 生成并发送智能选项
+                await generate_and_send_options(
+                    client=client,
+                    websocket=websocket,
+                    headers=headers,
+                    history_messages=history,
+                    user_message=user_message,
+                    assistant_response=assistant_content,
+                    completion_url=completion_url
+                )
 
             # 保存 AI 回复
             assistant_msg = ChatMessage(
@@ -169,3 +183,85 @@ async def websocket_endpoint(websocket: WebSocket):
             pass
     finally:
         db.close()
+
+
+async def generate_and_send_options(client, websocket, headers, history_messages, user_message, assistant_response, completion_url):
+    """生成并发送智能选项"""
+    try:
+        # 构建对话历史文本
+        history_lines = []
+        for record in history_messages:
+            role_label = "用户" if record.role == "user" else "AI"
+            history_lines.append(f"{role_label}: {record.content}")
+        if user_message:
+            history_lines.append(f"用户: {user_message}")
+        if assistant_response:
+            history_lines.append(f"AI: {assistant_response}")
+        history_text = "\n".join(history_lines)
+
+        # 选项生成提示词
+        options_prompt = (
+            "基于以下对话历史，生成 3-5 个引导式选项供用户选择。选项应该是开放性的问题或下一步建议，帮助用户深入思考。"
+            "请以 JSON 数组格式返回，每个选项包含 label（显示文字）和 value（实际值）字段。示例格式：[{\"label\": \"...\", \"value\": \"...\"}]"
+        )
+
+        # 构建请求负载
+        payload = {
+            "model": OPENAI_MODEL,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "你是一位经验丰富的高管教练，专注于引导式对话而非直接给出答案。"
+                },
+                {
+                    "role": "user",
+                    "content": f"{options_prompt}\n\n对话历史：\n{history_text}"
+                }
+            ],
+            "stream": False
+        }
+
+        # 调用 AI API（非流式）
+        response = await client.post(
+            completion_url,
+            headers=headers,
+            json=payload,
+            timeout=60.0
+        )
+        response.raise_for_status()
+        result = response.json()
+
+        # 提取内容
+        content = (
+            result.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+
+        # 解析 JSON 数组
+        parsed_options = json.loads(content)
+        if not isinstance(parsed_options, list):
+            return
+
+        # 格式化选项（添加唯一 ID）
+        formatted_options = []
+        for option in parsed_options:
+            label = option.get("label")
+            value = option.get("value")
+            if not label or not value:
+                continue
+            formatted_options.append({
+                "id": str(uuid.uuid4()),
+                "label": label,
+                "value": value
+            })
+
+        # 发送选项到前端
+        if formatted_options:
+            await websocket.send_json({
+                "type": "options",
+                "options": formatted_options
+            })
+    except Exception as e:
+        # 静默失败，不影响正常对话流程
+        logger.warning(f"选项生成失败: {e}")
