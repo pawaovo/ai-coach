@@ -1,13 +1,16 @@
 // 商业工具页 - 新设计
-import { View, Text, Textarea, ScrollView } from '@tarojs/components';
+import { View, Text, Textarea, ScrollView, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import React, { useState, useEffect } from 'react';
 import websocket from '../../services/websocket';
+import api from '../../services/api';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
 import { BUSINESS_TOOLS } from '../../constants';
-import type { Message } from '../../types';
+import type { Message, ChatSession } from '../../types';
 import CustomTabBar from '../../components/CustomTabBar';
 import './index.scss';
+
+const aiCoachIcon = require('../../assets/Ai-coach.png');
 
 // 工具图标映射
 const ToolIcon = ({ id }: { id: string }) => {
@@ -46,15 +49,6 @@ const ToolIcon = ({ id }: { id: string }) => {
   }
 };
 
-// 星形 Logo 组件
-const StarburstLogo = () => (
-  <View className="starburst-logo">
-    <View className="star-point p1" />
-    <View className="star-point p2" />
-    <View className="star-point p3" />
-    <View className="star-point p4" />
-  </View>
-);
 
 const ToolsPage = () => {
   const [showChat, setShowChat] = useState(false);
@@ -65,6 +59,8 @@ const ToolsPage = () => {
   const [streamingText, setStreamingText] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [scrollIntoViewId, setScrollIntoViewId] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [historySessions, setHistorySessions] = useState<ChatSession[]>([]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -167,11 +163,64 @@ const ToolsPage = () => {
     websocket.close();
   };
 
+  const handleShowHistory = async () => {
+    try {
+      const allSessions = await api.getSessions();
+      // 显示所有商业工具的会话
+      const filteredSessions = allSessions.filter(s =>
+        ['swot', 'smart', 'matrix', '5why'].includes(s.toolType)
+      );
+      setHistorySessions(filteredSessions);
+      setShowHistory(true);
+    } catch (error) {
+      console.error('加载历史会话失败:', error);
+      Taro.showToast({ title: '加载失败', icon: 'error' });
+    }
+  };
+
+  const handleSelectSession = async (sid: string, toolType: string) => {
+    setShowHistory(false);
+
+    // 找到对应的工具
+    const tool = BUSINESS_TOOLS.find(t => t.id === toolType);
+    if (!tool) return;
+
+    setSelectedTool(tool);
+    setShowChat(true);
+
+    try {
+      const msgs = await api.getMessages(sid);
+      setMessages(msgs.map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.createdAt)
+      })));
+      setSessionId(sid);
+
+      // 连接 WebSocket
+      await websocket.connect();
+      setupWebSocketHandlers();
+    } catch (error) {
+      console.error('加载会话消息失败:', error);
+    }
+  };
+
+  const getToolName = (toolType: string) => {
+    const tool = BUSINESS_TOOLS.find(t => t.id === toolType);
+    return tool ? tool.name : '未知工具';
+  };
+
   return (
     <View className="tools-page">
       {/* Header */}
       <View className="header">
         <Text className="title">商业工具</Text>
+        <View className="header-actions">
+          <View className="icon-btn" onClick={handleShowHistory}>
+            <View className="history-icon" />
+          </View>
+        </View>
       </View>
 
       {/* 2x2 Grid */}
@@ -203,6 +252,44 @@ const ToolsPage = () => {
       {/* Custom TabBar */}
       <CustomTabBar current={0} />
 
+      {/* 历史会话弹窗 */}
+      {showHistory && (
+        <View className="history-modal">
+          <View className="modal-mask" onClick={() => setShowHistory(false)} />
+          <View className="modal-content">
+            <View className="modal-header">
+              <Text className="modal-title">历史对话</Text>
+              <View className="modal-close" onClick={() => setShowHistory(false)}>
+                <Text className="close-icon">×</Text>
+              </View>
+            </View>
+            <ScrollView scrollY className="history-list">
+              {historySessions.length === 0 ? (
+                <View className="empty-hint">
+                  <Text>暂无历史记录</Text>
+                </View>
+              ) : (
+                <View className="history-items">
+                  {historySessions.map((session) => (
+                    <View
+                      key={session.id}
+                      className="history-item"
+                      onClick={() => handleSelectSession(session.id, session.toolType)}
+                    >
+                      <View className="item-content">
+                        <Text className="item-title">{getToolName(session.toolType)}</Text>
+                        <Text className="item-text">{session.firstMessage || '新对话'}</Text>
+                      </View>
+                      <View className="item-arrow" />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
       {/* Tool Chat Sheet */}
       {showChat && selectedTool && (
         <View className="chat-sheet">
@@ -232,9 +319,7 @@ const ToolsPage = () => {
                 <View key={msg.id} id={`tool-msg-${index}`} className="message-wrapper">
                   <View className={`message ${msg.role}`}>
                     {msg.role === 'assistant' && (
-                      <View className="ai-avatar">
-                        <StarburstLogo />
-                      </View>
+                      <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                     )}
                     <View className={`msg-bubble ${msg.role}`}>
                       <Text className="msg-content" userSelect>{msg.content}</Text>
@@ -247,9 +332,7 @@ const ToolsPage = () => {
               {isStreaming && streamingText && (
                 <View id="tool-msg-streaming" className="message-wrapper">
                   <View className="message assistant">
-                    <View className="ai-avatar">
-                      <StarburstLogo />
-                    </View>
+                    <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                     <View className="msg-bubble assistant">
                       <Text className="msg-content" userSelect>{streamingText}</Text>
                     </View>
@@ -261,9 +344,7 @@ const ToolsPage = () => {
               {isStreaming && !streamingText && (
                 <View id="tool-msg-thinking" className="message-wrapper">
                   <View className="message assistant">
-                    <View className="ai-avatar">
-                      <StarburstLogo />
-                    </View>
+                    <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                     <View className="loading-dots">
                       <View className="dot" style={{ animationDelay: '0ms' }} />
                       <View className="dot" style={{ animationDelay: '150ms' }} />

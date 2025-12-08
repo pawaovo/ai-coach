@@ -18,15 +18,22 @@ const ConnectPage = () => {
     });
   };
 
-  const handleCall = () => {
-    Taro.makePhoneCall({ phoneNumber: '13800000000' });
+  const handleCopyPhone = () => {
+    Taro.setClipboardData({
+      data: '13800000000',
+      success: () => {
+        setCopiedId('phone');
+        setTimeout(() => setCopiedId(null), 2000);
+      }
+    });
   };
 
-  const handleVisitWebsite = () => {
+  const handleCopyWebsite = () => {
     Taro.setClipboardData({
       data: 'https://www.xxx.com',
       success: () => {
-        Taro.showToast({ title: '网址已复制', icon: 'success' });
+        setCopiedId('website');
+        setTimeout(() => setCopiedId(null), 2000);
       }
     });
   };
@@ -43,7 +50,7 @@ const ConnectPage = () => {
         <View className="qr-card">
           <View className="qr-placeholder">
             <Image
-              src="/assets/qrcode.png"
+              src={require('../../assets/QRcode.png')}
               className="qr-image"
               mode="aspectFit"
             />
@@ -72,22 +79,30 @@ const ConnectPage = () => {
           </View>
 
           {/* Phone */}
-          <View className="contact-item" onClick={handleCall}>
+          <View className="contact-item" onClick={handleCopyPhone}>
             <View className="item-header">
               <Text className="item-label">电话</Text>
-              <View className="item-icon">
-                <View className="arrow-icon" />
+              <View className={`item-icon ${copiedId === 'phone' ? 'copied' : ''}`}>
+                {copiedId === 'phone' ? (
+                  <View className="check-icon" />
+                ) : (
+                  <View className="copy-icon" />
+                )}
               </View>
             </View>
             <Text className="item-value">138-xxxx-xxxx</Text>
           </View>
 
           {/* Website */}
-          <View className="contact-item" onClick={handleVisitWebsite}>
+          <View className="contact-item" onClick={handleCopyWebsite}>
             <View className="item-header">
               <Text className="item-label">官方网站</Text>
-              <View className="item-icon">
-                <View className="arrow-icon" />
+              <View className={`item-icon ${copiedId === 'website' ? 'copied' : ''}`}>
+                {copiedId === 'website' ? (
+                  <View className="check-icon" />
+                ) : (
+                  <View className="copy-icon" />
+                )}
               </View>
             </View>
             <Text className="item-value">www.xxx.com</Text>

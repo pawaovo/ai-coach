@@ -169,3 +169,48 @@ $font-3xl: 60rpx;
     transform: rotate(-45deg) scale(1);
   }
 }
+
+// ============ 共享组件样式 ============
+// 历史按钮图标
+@mixin history-icon {
+  width: 44rpx;
+  height: 44rpx;
+  border: 3rpx solid $secondary-foreground;
+  border-radius: 8rpx;
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24rpx;
+    height: 3rpx;
+    background: $secondary-foreground;
+  }
+
+  &::before {
+    top: 10rpx;
+  }
+
+  &::after {
+    top: 22rpx;
+  }
+}
+
+// 通用图标按钮容器
+@mixin icon-btn {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+
+  &:active {
+    background: $card;
+  }
+}
+

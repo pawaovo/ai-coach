@@ -45,30 +45,7 @@
         }
 
         .history-icon {
-          width: 44rpx;
-          height: 44rpx;
-          border: 3rpx solid $secondary-foreground;
-          border-radius: 8rpx;
-          position: relative;
-
-          &::before,
-          &::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 24rpx;
-            height: 3rpx;
-            background: $secondary-foreground;
-          }
-
-          &::before {
-            top: 10rpx;
-          }
-
-          &::after {
-            top: 22rpx;
-          }
+          @include history-icon;
         }
 
         .plus-icon {
