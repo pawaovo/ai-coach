@@ -147,9 +147,11 @@
         .message {
           display: flex;
           gap: 24rpx;
+          width: 100%;
 
           &.user {
             flex-direction: row-reverse;
+            justify-content: flex-start;
 
             .msg-bubble {
               background: $card;
@@ -157,6 +159,8 @@
               padding: 24rpx 40rpx;
               border-radius: 32rpx 32rpx 8rpx 32rpx;
               max-width: 85%;
+              word-break: break-all;
+              overflow-wrap: break-word;
             }
           }
 
@@ -174,19 +178,8 @@
             width: 48rpx;
             height: 48rpx;
             border-radius: 8rpx;
-            background: $card;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             flex-shrink: 0;
             margin-top: 12rpx;
-
-            .ai-text {
-              font-size: 20rpx;
-              font-weight: 700;
-              color: $foreground;
-              font-family: $font-serif;
-            }
           }
 
           .msg-content {
@@ -194,6 +187,7 @@
             line-height: 1.75;
             white-space: pre-wrap;
             word-break: break-word;
+            overflow-wrap: break-word;
           }
 
           .loading-dots {

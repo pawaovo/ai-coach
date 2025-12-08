@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import websocket from '../../services/websocket';
 import api from '../../services/api';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
+import { cleanMarkdown } from '../../utils/markdown';
 import { BUSINESS_TOOLS } from '../../constants';
 import type { Message, ChatSession, SuggestedOption } from '../../types';
 import CustomTabBar from '../../components/CustomTabBar';
@@ -75,6 +76,15 @@ const ToolsPage = () => {
       setScrollIntoViewId('tool-msg-streaming');
     }
   }, [streamingText]);
+
+  // 选项更新时滚动到底部
+  useEffect(() => {
+    if (suggestedOptions.length > 0) {
+      setTimeout(() => {
+        setScrollIntoViewId('tool-scroll-anchor');
+      }, 100);
+    }
+  }, [suggestedOptions]);
 
   const handleToolClick = async (tool: typeof BUSINESS_TOOLS[0]) => {
     setSelectedTool(tool);
@@ -380,7 +390,9 @@ const ToolsPage = () => {
                       <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                     )}
                     <View className={`msg-bubble ${msg.role}`}>
-                      <Text className="msg-content" userSelect>{msg.content}</Text>
+                      <Text className="msg-content" userSelect>
+                        {msg.role === 'assistant' ? cleanMarkdown(msg.content) : msg.content}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -392,7 +404,7 @@ const ToolsPage = () => {
                   <View className="message assistant">
                     <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                     <View className="msg-bubble assistant">
-                      <Text className="msg-content" userSelect>{streamingText}</Text>
+                      <Text className="msg-content" userSelect>{cleanMarkdown(streamingText)}</Text>
                     </View>
                   </View>
                 </View>
@@ -412,7 +424,7 @@ const ToolsPage = () => {
                 </View>
               )}
 
-              <View className="scroll-anchor" />
+              <View id="tool-scroll-anchor" className="scroll-anchor" />
             </ScrollView>
 
             {/* Options */}

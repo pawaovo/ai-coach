@@ -202,7 +202,9 @@ async def generate_and_send_options(client, websocket, headers, history_messages
         # 选项生成提示词
         options_prompt = (
             "基于以下对话历史，生成 3-5 个引导式选项供用户选择。选项应该是开放性的问题或下一步建议，帮助用户深入思考。"
-            "请以 JSON 数组格式返回，每个选项包含 label（显示文字）和 value（实际值）字段。示例格式：[{\"label\": \"...\", \"value\": \"...\"}]"
+            "请以 JSON 数组格式返回，每个选项包含 label（简短显示文字，不超过20个字）和 value（完整实际值）字段。"
+            "重要：label 必须简短精炼，适合作为按钮文字显示。"
+            "示例格式：[{\"label\": \"分析团队协作\", \"value\": \"我想深入分析一下团队协作方面的问题\"}]"
         )
 
         # 构建请求负载

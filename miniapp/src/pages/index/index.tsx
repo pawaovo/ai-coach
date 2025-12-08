@@ -1,15 +1,19 @@
 // AI 教练对话页（首页）- 新设计
-import { View, Text, Textarea, ScrollView } from '@tarojs/components';
+import { View, Text, Textarea, ScrollView, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import websocket from '../../services/websocket';
 import api from '../../services/api';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
+import { cleanMarkdown } from '../../utils/markdown';
 import { storage } from '../../utils/storage';
 import { COACH_PERSONA, STORAGE_KEYS, PRESETS } from '../../constants';
 import type { Message } from '../../types';
 import CustomTabBar from '../../components/CustomTabBar';
 import './index.scss';
+
+// AI头像图片
+const aiCoachIcon = require('../../assets/Ai-coach.png');
 
 const ChatPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -222,12 +226,12 @@ const ChatPage = () => {
               <View key={msg.id} id={`msg-${index}`} className="message-wrapper">
                 <View className={`message ${msg.role}`}>
                   {msg.role === 'assistant' && (
-                    <View className="ai-avatar">
-                      <Text className="ai-text">AI</Text>
-                    </View>
+                    <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                   )}
                   <View className={`msg-bubble ${msg.role}`}>
-                    <Text className="msg-content" userSelect>{msg.content}</Text>
+                    <Text className="msg-content" userSelect>
+                      {msg.role === 'assistant' ? cleanMarkdown(msg.content) : msg.content}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -237,11 +241,9 @@ const ChatPage = () => {
             {isStreaming && streamingText && (
               <View id="msg-streaming" className="message-wrapper">
                 <View className="message assistant">
-                  <View className="ai-avatar">
-                    <Text className="ai-text">AI</Text>
-                  </View>
+                  <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                   <View className="msg-bubble assistant">
-                    <Text className="msg-content" userSelect>{streamingText}</Text>
+                    <Text className="msg-content" userSelect>{cleanMarkdown(streamingText)}</Text>
                   </View>
                 </View>
               </View>
@@ -251,9 +253,7 @@ const ChatPage = () => {
             {isStreaming && !streamingText && (
               <View id="msg-thinking" className="message-wrapper">
                 <View className="message assistant">
-                  <View className="ai-avatar">
-                    <Text className="ai-text">AI</Text>
-                  </View>
+                  <Image src={aiCoachIcon} className="ai-avatar" mode="aspectFit" />
                   <View className="loading-dots">
                     <View className="dot" style={{ animationDelay: '0ms' }} />
                     <View className="dot" style={{ animationDelay: '150ms' }} />
