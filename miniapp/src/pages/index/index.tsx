@@ -7,7 +7,7 @@ import api from '../../services/api';
 import { checkDailyQuota, incrementUsage, getUsageInfo } from '../../utils/usage';
 import { cleanMarkdown } from '../../utils/markdown';
 import { storage } from '../../utils/storage';
-import { COACH_PERSONA, STORAGE_KEYS, PRESETS } from '../../constants';
+import { STORAGE_KEYS, PRESETS } from '../../constants';
 import type { Message } from '../../types';
 import CustomTabBar from '../../components/CustomTabBar';
 import './index.scss';
@@ -24,10 +24,13 @@ const ChatPage = () => {
   const [scrollIntoViewId, setScrollIntoViewId] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [historySessions, setHistorySessions] = useState<any[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [usageInfo, setUsageInfo] = useState<{ remaining: number; total: number } | null>(null);
 
   // 初始化
   useEffect(() => {
     initChat();
+    loadUsageInfo();
     return () => websocket.close();
   }, []);
 
@@ -143,6 +146,8 @@ const ChatPage = () => {
     try {
       websocket.sendMessage(inputValue, 'free_chat', sessionId || undefined);
       await incrementUsage();
+      // 更新使用次数显示
+      await loadUsageInfo();
     } catch (error) {
       console.error('发送消息失败:', error);
       Taro.showToast({ title: '发送失败', icon: 'error' });
@@ -152,6 +157,7 @@ const ChatPage = () => {
 
   const handleNewSession = () => {
     if (isStreaming) return;
+    setShowMenu(false);
     // 保存当前会话（如果有消息）
     setSessionId(null);
     setMessages([]);
@@ -159,6 +165,7 @@ const ChatPage = () => {
   };
 
   const handleShowHistory = async () => {
+    setShowMenu(false);
     try {
       const sessions = await api.getSessions();
       setHistorySessions(sessions);
@@ -167,6 +174,10 @@ const ChatPage = () => {
       console.error('加载历史会话失败:', error);
       Taro.showToast({ title: '加载失败', icon: 'error' });
     }
+  };
+
+  const handleMenuToggle = () => {
+    setShowMenu(!showMenu);
   };
 
   const handleSelectSession = async (sid: string) => {
@@ -178,23 +189,65 @@ const ChatPage = () => {
     setInputValue(text);
   };
 
+  const loadUsageInfo = async () => {
+    try {
+      const info = await getUsageInfo();
+      if (info) {
+        setUsageInfo({
+          remaining: info.remaining,
+          total: info.total
+        });
+      }
+    } catch (error) {
+      console.error('加载使用次数失败:', error);
+    }
+  };
+
   return (
     <View className="chat-page">
       {/* Header */}
       <View className="header">
         <Text className="title">AI Coach</Text>
         <View className="header-actions">
-          <View className="icon-btn" onClick={handleShowHistory}>
-            <View className="history-icon" />
+          {/* 消息计数展示 */}
+          <View className="usage-counter">
+            {usageInfo ? (
+              <Text className="counter-text">
+                {usageInfo.remaining}/{usageInfo.total}
+              </Text>
+            ) : (
+              <Text className="counter-text">--/--</Text>
+            )}
           </View>
-          <View className="icon-btn" onClick={handleNewSession}>
-            <View className="plus-icon">
-              <View className="plus-h" />
-              <View className="plus-v" />
+          <View className="icon-btn" onClick={handleMenuToggle}>
+            <View className="menu-icon">
+              <View className="dot" />
+              <View className="dot" />
+              <View className="dot" />
             </View>
           </View>
         </View>
       </View>
+
+      {/* 下拉菜单 */}
+      {showMenu && (
+        <>
+          <View className="menu-mask" onClick={() => setShowMenu(false)} />
+          <View className="dropdown-menu">
+            <View className="menu-item" onClick={handleNewSession}>
+              <View className="menu-item-icon plus">
+                <View className="plus-h" />
+                <View className="plus-v" />
+              </View>
+              <Text className="menu-item-text">新建对话</Text>
+            </View>
+            <View className="menu-item" onClick={handleShowHistory}>
+              <View className="menu-item-icon history" />
+              <Text className="menu-item-text">历史对话</Text>
+            </View>
+          </View>
+        </>
+      )}
 
       {/* Messages Area */}
       <ScrollView

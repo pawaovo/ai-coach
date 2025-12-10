@@ -29,7 +29,11 @@
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 16rpx;
+      gap: 24rpx;
+
+      .usage-counter {
+        @include usage-counter;
+      }
 
       .icon-btn {
         width: 80rpx;
@@ -44,15 +48,69 @@
           background: $card;
         }
 
-        .history-icon {
-          @include history-icon;
+        .menu-icon {
+          display: flex;
+          flex-direction: row;
+          gap: 6rpx;
+          align-items: center;
+          justify-content: center;
+
+          .dot {
+            width: 8rpx;
+            height: 8rpx;
+            border-radius: 50%;
+            background: $secondary-foreground;
+          }
         }
+      }
+    }
+  }
 
-        .plus-icon {
-          width: 44rpx;
-          height: 44rpx;
-          position: relative;
+  // ========== 下拉菜单 ==========
+  .menu-mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+  }
 
+  .dropdown-menu {
+    position: absolute;
+    top: 160rpx;
+    right: 32rpx;
+    background: #FFFFFF;
+    border-radius: 16rpx;
+    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+    border: 1rpx solid $border;
+    overflow: hidden;
+    z-index: 100;
+    animation: slideDown 0.2s ease-out;
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 24rpx;
+      padding: 32rpx 40rpx;
+      transition: background 0.2s;
+      min-width: 280rpx;
+
+      &:active {
+        background: $card;
+      }
+
+      &:not(:last-child) {
+        border-bottom: 1rpx solid $border;
+      }
+
+      .menu-item-icon {
+        width: 40rpx;
+        height: 40rpx;
+        position: relative;
+        flex-shrink: 0;
+
+        &.plus {
           .plus-h,
           .plus-v {
             position: absolute;
@@ -63,18 +121,28 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 28rpx;
-            height: 4rpx;
+            width: 24rpx;
+            height: 3rpx;
           }
 
           .plus-v {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 4rpx;
-            height: 28rpx;
+            width: 3rpx;
+            height: 24rpx;
           }
         }
+
+        &.history {
+          @include history-icon;
+        }
+      }
+
+      .menu-item-text {
+        font-size: 30rpx;
+        color: $foreground;
+        font-weight: 400;
       }
     }
   }

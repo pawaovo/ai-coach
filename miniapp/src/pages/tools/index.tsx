@@ -64,6 +64,11 @@ const ToolsPage = () => {
   const [historySessions, setHistorySessions] = useState<ChatSession[]>([]);
   const [suggestedOptions, setSuggestedOptions] = useState<SuggestedOption[]>([]);
   const [selectedOptionIds, setSelectedOptionIds] = useState<Set<string>>(new Set());
+  const [usageInfo, setUsageInfo] = useState<{ remaining: number; total: number } | null>(null);
+
+  useEffect(() => {
+    loadUsageInfo();
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -199,10 +204,8 @@ const ToolsPage = () => {
         sessionId || undefined
       );
       await incrementUsage();
-      const usageInfo = await getUsageInfo();
-      if (usageInfo) {
-        Taro.eventCenter.trigger('quotaUpdated', usageInfo);
-      }
+      // 更新使用次数显示
+      await loadUsageInfo();
     } catch (error) {
       console.error('发送消息失败:', error);
       Taro.showToast({ title: '发送失败', icon: 'error' });
@@ -279,12 +282,36 @@ const ToolsPage = () => {
     return tool ? tool.name : '未知工具';
   };
 
+  const loadUsageInfo = async () => {
+    try {
+      const info = await getUsageInfo();
+      if (info) {
+        setUsageInfo({
+          remaining: info.remaining,
+          total: info.total
+        });
+      }
+    } catch (error) {
+      console.error('加载使用次数失败:', error);
+    }
+  };
+
   return (
     <View className="tools-page">
       {/* Header */}
       <View className="header">
         <Text className="title">商业工具</Text>
         <View className="header-actions">
+          {/* 消息计数展示 */}
+          <View className="usage-counter">
+            {usageInfo ? (
+              <Text className="counter-text">
+                {usageInfo.remaining}/{usageInfo.total}
+              </Text>
+            ) : (
+              <Text className="counter-text">--/--</Text>
+            )}
+          </View>
           <View className="icon-btn" onClick={handleShowHistory}>
             <View className="history-icon" />
           </View>
